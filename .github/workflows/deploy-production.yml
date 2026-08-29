@@ -1,0 +1,40 @@
+name: Deploy production
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}
+  TURNSTILE_SECRET: ${{ secrets.TURNSTILE_SECRET }}
+  RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+  ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+  HASH_SALT: ${{ secrets.HASH_SALT }}
+
+jobs:
+  deploy:
+    name: Deploy Cloudflare Worker
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+      - name: Build Worker
+        run: npm run build
+      - name: Deploy to Cloudflare
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy
