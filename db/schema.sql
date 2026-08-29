@@ -18,6 +18,9 @@ CREATE TABLE IF NOT EXISTS homestays (
   airbnb_url TEXT,
   booking_url TEXT,
   agoda_url TEXT,
+  tags_json TEXT NOT NULL DEFAULT '[]',
+  source_name TEXT,
+  source_url TEXT,
   average_rating REAL NOT NULL DEFAULT 0,
   review_count INTEGER NOT NULL DEFAULT 0,
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('active','pending','hidden','closed','duplicate')),
@@ -37,7 +40,7 @@ CREATE TABLE IF NOT EXISTS reviews (
   stay_month INTEGER,
   stay_year INTEGER,
   trip_type TEXT,
-  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected','needs_changes','flagged','removed')),
+  status TEXT NOT NULL DEFAULT 'pending_email' CHECK (status IN ('pending_email','pending','approved','rejected','needs_changes','flagged','removed')),
   submitted_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   approved_at TEXT,
   rejected_at TEXT,
@@ -45,6 +48,16 @@ CREATE TABLE IF NOT EXISTS reviews (
   ip_hash TEXT,
   user_agent_hash TEXT,
   FOREIGN KEY (homestay_id) REFERENCES homestays(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS review_verification_tokens (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  review_id INTEGER NOT NULL,
+  token_hash TEXT NOT NULL UNIQUE,
+  expires_at TEXT NOT NULL,
+  used_at TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (review_id) REFERENCES reviews(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS helpful_votes (
@@ -62,6 +75,7 @@ CREATE TABLE IF NOT EXISTS review_reports (
   reason TEXT NOT NULL,
   detail TEXT,
   reporter_email TEXT,
+  reporter_key_hash TEXT,
   status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','resolved','dismissed')),
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   resolved_at TEXT,
@@ -87,4 +101,6 @@ CREATE INDEX IF NOT EXISTS idx_homestays_state_city ON homestays(state, city);
 CREATE INDEX IF NOT EXISTS idx_homestays_status ON homestays(status);
 CREATE INDEX IF NOT EXISTS idx_reviews_homestay_status ON reviews(homestay_id, status);
 CREATE INDEX IF NOT EXISTS idx_reviews_status_submitted ON reviews(status, submitted_at DESC);
+CREATE INDEX IF NOT EXISTS idx_reviews_email_homestay ON reviews(reviewer_email, homestay_id, submitted_at DESC);
+CREATE INDEX IF NOT EXISTS idx_verification_token_hash ON review_verification_tokens(token_hash);
 CREATE INDEX IF NOT EXISTS idx_reports_status ON review_reports(status, created_at DESC);
