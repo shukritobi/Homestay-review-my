@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "homestay-review-my",
+  "compatibility_date": "2026-08-29",
+  "pages_build_output_dir": "./dist",
+  "vars": {
+    "APP_URL": "https://homestayreview.my",
+    "TURNSTILE_HOSTNAMES": "homestayreview.my,www.homestayreview.my",
+    "EMAIL_FROM": "HomestayReview.my <reviews@homestayreview.my>"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "homestay-review-db",
+      "database_id": "00000000-0000-0000-0000-000000000000"
+    }
+  ]
+}
