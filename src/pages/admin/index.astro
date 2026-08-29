@@ -1,0 +1,141 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const pending = [
+  {
+    id: 1,
+    stay: 'Rumah Rimbun',
+    location: 'Janda Baik, Pahang',
+    rating: 5,
+    title: 'Quiet, clean and easy for parents',
+    body: 'We stayed with my parents and two children. The rooms were clean, kitchen equipment worked properly and the river area was safe when we visited. Mobile signal was weaker inside the house, so download anything important before arriving.',
+    author: 'Amirul',
+    email: 'amirul***@gmail.com',
+    date: '29 Aug 2026 · 18:42',
+    risk: 'Low risk'
+  },
+  {
+    id: 2,
+    stay: 'Pantai 38',
+    location: 'Port Dickson, Negeri Sembilan',
+    rating: 3,
+    title: 'Great location, maintenance needs attention',
+    body: 'The location is excellent for a beach weekend and there is plenty of common space. Two bathroom locks were loose and one air-conditioner took a long time to cool the room. I would stay again if those small maintenance items are fixed.',
+    author: 'Siti',
+    email: 'siti***@outlook.com',
+    date: '29 Aug 2026 · 17:11',
+    risk: 'Low risk'
+  },
+  {
+    id: 3,
+    stay: 'New listing: Desa Embun Stay',
+    location: 'Bentong, Pahang',
+    rating: 4,
+    title: 'Simple place with a very helpful host',
+    body: 'This place was not listed here yet. We stayed one night after a hiking trip. It is basic but clean, parking was easy and the host gave very clear directions. The water pressure upstairs could be stronger.',
+    author: 'Johan',
+    email: 'johan***@icloud.com',
+    date: '29 Aug 2026 · 15:56',
+    risk: 'New homestay'
+  }
+];
+---
+
+<BaseLayout title="Moderation queue | HomestayReview.my" wide>
+  <section class="admin-shell">
+    <div class="admin-top">
+      <div>
+        <span class="demo-badge">Admin prototype</span>
+        <h1>Moderation queue</h1>
+        <p>Nothing public until you say so.</p>
+      </div>
+      <a class="button button-light button-small" href="/">View public site ↗</a>
+    </div>
+
+    <div class="admin-stats">
+      <div class="stat-card"><span>Pending</span><strong id="pendingStat">37</strong></div>
+      <div class="stat-card"><span>Approved today</span><strong id="approvedStat">18</strong></div>
+      <div class="stat-card"><span>Flagged</span><strong>4</strong></div>
+      <div class="stat-card"><span>Total reviews</span><strong>2,821</strong></div>
+    </div>
+
+    <div class="moderation-layout">
+      <nav class="admin-nav" aria-label="Moderation sections">
+        <button class="active" type="button">Pending <span>37</span></button>
+        <button type="button">Flagged <span>4</span></button>
+        <button type="button">Approved <span>2,821</span></button>
+        <button type="button">Rejected <span>138</span></button>
+        <button type="button">New listings <span>9</span></button>
+      </nav>
+
+      <div>
+        <div class="feed-toolbar">
+          <p><strong>Review submissions</strong> · newest first</p>
+          <select class="sort-select" aria-label="Risk filter">
+            <option>All risk levels</option>
+            <option>Needs attention</option>
+            <option>New homestay</option>
+          </select>
+        </div>
+        <div class="queue" id="queue">
+          {pending.map((item) => (
+            <article class="queue-card" data-id={item.id}>
+              <div class="queue-body">
+                <div class="queue-meta">
+                  <div>
+                    <span>{item.location}</span>
+                    <h3>{item.stay}</h3>
+                  </div>
+                  <span class="demo-badge">{item.risk}</span>
+                </div>
+                <div class="review-card-head">
+                  <div>
+                    <div class="stars" style="color:#d99500">{'★'.repeat(item.rating)}{'☆'.repeat(5 - item.rating)}</div>
+                    <strong>{item.title}</strong>
+                  </div>
+                </div>
+                <p class="queue-review">“{item.body}”</p>
+                <div class="queue-author">
+                  <span><strong>{item.author}</strong></span>
+                  <span>✓ {item.email}</span>
+                  <span>{item.date}</span>
+                </div>
+              </div>
+              <div class="queue-actions">
+                <button class="reject" type="button" data-action="reject">Reject</button>
+                <button type="button" data-action="flag">Flag</button>
+                <button type="button" data-action="changes">Request change</button>
+                <button class="approve" type="button" data-action="approve">Approve ✓</button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    const pendingStat = document.querySelector('#pendingStat');
+    const approvedStat = document.querySelector('#approvedStat');
+
+    document.querySelectorAll('.queue-actions button').forEach((button) => {
+      button.addEventListener('click', () => {
+        const card = button.closest('.queue-card');
+        const action = button.dataset.action;
+        if (!card) return;
+
+        if (action === 'flag' || action === 'changes') {
+          const original = button.textContent;
+          button.textContent = action === 'flag' ? 'Flagged ✓' : 'Requested ✓';
+          button.disabled = true;
+          setTimeout(() => { button.textContent = original; button.disabled = false; }, 1400);
+          return;
+        }
+
+        card.classList.add('removed');
+        pendingStat.textContent = String(Math.max(0, Number(pendingStat.textContent || 0) - 1));
+        if (action === 'approve') approvedStat.textContent = String(Number(approvedStat.textContent || 0) + 1);
+      });
+    });
+  </script>
+</BaseLayout>
