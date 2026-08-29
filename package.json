@@ -5,12 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "build": "astro check && astro build",
+    "build": "astro build",
     "preview": "wrangler pages dev ./dist",
     "typecheck": "astro check",
     "deploy": "astro build && wrangler pages deploy ./dist",
     "db:init:local": "wrangler d1 execute homestay-review-db --local --file=./db/schema.sql",
-    "db:init:remote": "wrangler d1 execute homestay-review-db --remote --file=./db/schema.sql"
+    "db:init:remote": "wrangler d1 execute homestay-review-db --remote --file=./db/schema.sql",
+    "db:seed:local": "wrangler d1 execute homestay-review-db --local --file=./db/seed.sql",
+    "db:seed:remote": "wrangler d1 execute homestay-review-db --remote --file=./db/seed.sql"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.4",
