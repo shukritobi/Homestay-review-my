@@ -61,6 +61,48 @@ export const POST: APIRoute = async ({ request, locals }) => {
   if (!reviewerName) return json({ ok: false, error: 'Add your name.' }, 400);
   if (!isValidEmail(reviewerEmail)) return json({ ok: false, error: 'Enter a valid email address.' }, 400);
 
+  const userAgent = request.headers.get('User-Agent') || '';
+  const ipHash = await sha256(`${env.HASH_SALT}|ip|${remoteIp || 'unknown'}`);
+  const userAgentHash = await sha256(`${env.HASH_SALT}|ua|${userAgent}`);
+
+  // Remove abandoned, expired email-verification attempts so genuine users can try again.
+  await db.batch([
+    db.prepare(`
+      DELETE FROM review_verification_tokens
+      WHERE review_id IN (
+        SELECT id FROM reviews
+        WHERE status = 'pending_email' AND datetime(submitted_at) < datetime('now', '-24 hours')
+      )
+    `),
+    db.prepare(`
+      DELETE FROM reviews
+      WHERE status = 'pending_email' AND datetime(submitted_at) < datetime('now', '-24 hours')
+    `)
+  ]);
+  await db.prepare(`
+    DELETE FROM homestays
+    WHERE status = 'pending'
+      AND source_name = 'User submitted'
+      AND datetime(created_at) < datetime('now', '-24 hours')
+      AND NOT EXISTS (SELECT 1 FROM reviews WHERE reviews.homestay_id = homestays.id)
+  `).run();
+
+  // Lightweight D1 rate limiting. Turnstile is still mandatory, but this caps email/database abuse.
+  const [ipBurst, emailBurst] = await Promise.all([
+    db.prepare(`
+      SELECT COUNT(*) AS total FROM reviews
+      WHERE ip_hash = ? AND datetime(submitted_at) > datetime('now', '-1 hour')
+    `).bind(ipHash).first<{ total: number }>(),
+    db.prepare(`
+      SELECT COUNT(*) AS total FROM reviews
+      WHERE reviewer_email = ? AND datetime(submitted_at) > datetime('now', '-1 hour')
+    `).bind(reviewerEmail).first<{ total: number }>()
+  ]);
+
+  if (Number(ipBurst?.total || 0) >= 6 || Number(emailBurst?.total || 0) >= 3) {
+    return json({ ok: false, error: 'Too many review attempts. Please try again later.' }, 429);
+  }
+
   let homestay: Awaited<ReturnType<typeof findHomestayById>> | null = null;
   let createdHomestayId: number | null = null;
   const homestayId = Number(cleanText(form.get('homestayId'), 20));
@@ -112,12 +154,13 @@ export const POST: APIRoute = async ({ request, locals }) => {
   `).bind(reviewerEmail, homestay.id).first<{ id: number }>();
 
   if (recent) {
+    if (createdHomestayId) {
+      await db.prepare(`DELETE FROM homestays WHERE id = ? AND NOT EXISTS (SELECT 1 FROM reviews WHERE homestay_id = ?)`)
+        .bind(createdHomestayId, createdHomestayId)
+        .run();
+    }
     return json({ ok: false, error: 'This email already submitted a review for this homestay recently.' }, 409);
   }
-
-  const userAgent = request.headers.get('User-Agent') || '';
-  const ipHash = await sha256(`${env.HASH_SALT}|ip|${remoteIp || 'unknown'}`);
-  const userAgentHash = await sha256(`${env.HASH_SALT}|ua|${userAgent}`);
 
   const insertedReview = await db.prepare(`
     INSERT INTO reviews (
