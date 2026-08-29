@@ -1,0 +1,100 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { sha256 } from '../../lib/security';
+
+const db = Astro.locals.runtime.env.DB;
+const rawToken = Astro.url.searchParams.get('token') || '';
+let state: 'success' | 'used' | 'expired' | 'invalid' | 'error' = 'invalid';
+let homestayName = '';
+
+if (db && rawToken.length >= 20 && rawToken.length <= 200) {
+  try {
+    const tokenHash = await sha256(rawToken);
+    const token = await db.prepare(`
+      SELECT vt.id, vt.review_id, vt.expires_at, vt.used_at, r.status, r.email_verified, h.name AS homestay_name
+      FROM review_verification_tokens vt
+      JOIN reviews r ON r.id = vt.review_id
+      JOIN homestays h ON h.id = r.homestay_id
+      WHERE vt.token_hash = ?
+      LIMIT 1
+    `).bind(tokenHash).first<{
+      id: number;
+      review_id: number;
+      expires_at: string;
+      used_at: string | null;
+      status: string;
+      email_verified: number;
+      homestay_name: string;
+    }>();
+
+    if (!token) {
+      state = 'invalid';
+    } else {
+      homestayName = token.homestay_name;
+      if (token.used_at || token.email_verified === 1 || token.status !== 'pending_email') {
+        state = 'used';
+      } else {
+        const valid = await db.prepare(`
+          SELECT CASE WHEN datetime(?) > datetime('now') THEN 1 ELSE 0 END AS valid
+        `).bind(token.expires_at).first<{ valid: number }>();
+
+        if (!valid?.valid) {
+          state = 'expired';
+        } else {
+          await db.batch([
+            db.prepare(`UPDATE review_verification_tokens SET used_at = CURRENT_TIMESTAMP WHERE id = ? AND used_at IS NULL`).bind(token.id),
+            db.prepare(`UPDATE reviews SET email_verified = 1, status = 'pending' WHERE id = ? AND status = 'pending_email'`).bind(token.review_id)
+          ]);
+          state = 'success';
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Review verification failed', error);
+    state = 'error';
+  }
+}
+
+const copy = {
+  success: {
+    eyebrow: 'Email verified',
+    title: 'Your review is now with the moderator.',
+    body: `Thanks. ${homestayName ? `Your review of ${homestayName}` : 'Your review'} is still private and will only appear after manual approval.`
+  },
+  used: {
+    eyebrow: 'Already verified',
+    title: 'This verification link has already been used.',
+    body: 'No action is needed. If the review is still pending, it is already waiting in the moderation queue.'
+  },
+  expired: {
+    eyebrow: 'Link expired',
+    title: 'This verification link has expired.',
+    body: 'Verification links last 24 hours. Submit the review again to receive a fresh link.'
+  },
+  invalid: {
+    eyebrow: 'Invalid link',
+    title: 'We could not verify this link.',
+    body: 'The verification token is missing or invalid. Check that you opened the complete link from the email.'
+  },
+  error: {
+    eyebrow: 'Temporary problem',
+    title: 'We could not complete verification.',
+    body: 'The review has not been published. Please try opening the verification link again.'
+  }
+}[state];
+---
+
+<BaseLayout title="Verify review | HomestayReview.my">
+  <section class="form-shell verification-shell">
+    <div class="form-card verification-card">
+      <p class="eyebrow">{copy.eyebrow}</p>
+      <div class:list={["big-check", state !== 'success' && 'neutral-check']}>{state === 'success' || state === 'used' ? '✓' : '!'}</div>
+      <h1>{copy.title}</h1>
+      <p>{copy.body}</p>
+      <div class="verification-actions">
+        <a class="button button-dark" href="/">Browse homestays</a>
+        {state === 'expired' && <a class="button button-light" href="/review/submit">Submit again</a>}
+      </div>
+    </div>
+  </section>
+</BaseLayout>
