@@ -1,12 +1,26 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "homestay-review-my",
+  "main": "@astrojs/cloudflare/entrypoints/server",
   "compatibility_date": "2026-08-29",
-  "pages_build_output_dir": "./dist",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS"
+  },
   "vars": {
     "APP_URL": "https://homestayreview.my",
     "TURNSTILE_HOSTNAMES": "homestayreview.my,www.homestayreview.my",
     "EMAIL_FROM": "HomestayReview.my <reviews@homestayreview.my>"
+  },
+  "secrets": {
+    "required": [
+      "TURNSTILE_SITE_KEY",
+      "TURNSTILE_SECRET",
+      "RESEND_API_KEY",
+      "ADMIN_EMAIL",
+      "HASH_SALT"
+    ]
   },
   "d1_databases": [
     {
