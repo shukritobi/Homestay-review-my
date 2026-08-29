@@ -1,0 +1,109 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Write a homestay review | HomestayReview.my" description="Submit a homestay review for moderation on HomestayReview.my.">
+  <section class="form-shell">
+    <div class="form-head">
+      <p class="eyebrow">Share your stay</p>
+      <h1>A useful review beats a perfect review.</h1>
+      <p>Tell the next guest what actually mattered. Every submission stays private until it has been checked and approved.</p>
+    </div>
+
+    <div id="reviewFormCard" class="form-card">
+      <form id="reviewForm">
+        <div class="form-section">
+          <label class="field-label" for="homestayName">Homestay <span class="field-hint">Can't find it? Type the name anyway. We can create the listing during moderation.</span></label>
+          <input id="homestayName" name="homestay" class="field" required placeholder="e.g. Rumah Rimbun, Janda Baik" />
+        </div>
+
+        <div class="form-section">
+          <span class="field-label">Overall rating</span>
+          <div class="rating-input" aria-label="Choose rating out of 5">
+            <input id="star5" name="rating" type="radio" value="5" required /><label for="star5" title="5 stars">★</label>
+            <input id="star4" name="rating" type="radio" value="4" /><label for="star4" title="4 stars">★</label>
+            <input id="star3" name="rating" type="radio" value="3" /><label for="star3" title="3 stars">★</label>
+            <input id="star2" name="rating" type="radio" value="2" /><label for="star2" title="2 stars">★</label>
+            <input id="star1" name="rating" type="radio" value="1" /><label for="star1" title="1 star">★</label>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="field-grid">
+            <label>
+              <span class="field-label">When did you stay?</span>
+              <input class="field" name="stayMonth" type="month" required />
+            </label>
+            <label>
+              <span class="field-label">Trip type</span>
+              <select class="field" name="tripType" required>
+                <option value="">Choose one</option>
+                <option>Family</option>
+                <option>Couple</option>
+                <option>Friends / group</option>
+                <option>Solo</option>
+                <option>Work</option>
+                <option>Other</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <label class="field-label" for="reviewTitle">Give your review a short title</label>
+          <input id="reviewTitle" class="field" name="title" maxlength="90" required placeholder="What should people know first?" />
+          <div style="height:12px"></div>
+          <label class="field-label" for="reviewBody">Your review <span class="field-hint">Specific details are more useful than generic praise or complaints.</span></label>
+          <textarea id="reviewBody" class="textarea" name="body" minlength="40" maxlength="2500" required placeholder="How clean was it? Was it easy to find? Did the place match what you expected? Anything future guests should prepare for?"></textarea>
+        </div>
+
+        <div class="form-section">
+          <div class="field-grid">
+            <label>
+              <span class="field-label">Your name <span class="field-hint">Shown publicly</span></span>
+              <input class="field" name="name" required placeholder="First name is enough" />
+            </label>
+            <label>
+              <span class="field-label">Email <span class="field-hint">Never shown publicly</span></span>
+              <input class="field" name="email" type="email" required placeholder="you@example.com" />
+            </label>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-note">
+            <b>✓</b>
+            <span><strong>Nothing publishes instantly.</strong> In production, your email will be verified first, then the review enters the private moderation queue. It only appears after approval.</span>
+          </div>
+          <div class="submit-row">
+            <small>By submitting, you confirm this is your own experience and the details are accurate to the best of your knowledge.</small>
+            <button class="button button-accent" type="submit">Submit for review →</button>
+          </div>
+        </div>
+      </form>
+
+      <div id="successCard" class="success-card">
+        <div class="big-check">✓</div>
+        <h2>Sent to moderation.</h2>
+        <p>This prototype does not send data yet. In the production flow, the reviewer verifies their email and you receive the submission in your private approval queue.</p>
+        <div style="margin-top:20px"><a class="button button-dark" href="/">Back to listings</a></div>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const requestedStay = params.get('stay');
+    const homestayInput = document.querySelector('#homestayName');
+    if (requestedStay && homestayInput) homestayInput.value = requestedStay;
+
+    const form = document.querySelector('#reviewForm');
+    const success = document.querySelector('#successCard');
+    form?.addEventListener('submit', (event) => {
+      event.preventDefault();
+      form.style.display = 'none';
+      success.style.display = 'block';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  </script>
+</BaseLayout>
