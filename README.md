@@ -77,14 +77,17 @@ For a newly submitted homestay, approving its first verified review also activat
 
 ## Stack
 
-- Astro 5 + TypeScript
-- `@astrojs/cloudflare`
-- Cloudflare Pages / Pages Functions
+- Astro 7.2.9 + TypeScript
+- `@astrojs/cloudflare` 14.2.5
+- Cloudflare Workers
 - Cloudflare D1
 - Cloudflare Turnstile
 - Cloudflare Access for `/admin*` and `/api/admin/*`
 - Resend for verification email
-- GitHub Actions for production bundle checks
+- Wrangler 4.127.1
+- GitHub Actions for database, dependency and Worker bundle checks
+
+The app uses the current Workers runtime. `src/middleware.ts` bridges the Worker environment into the app's existing internal `locals.runtime.env` interface so the review and moderation code stays simple and consistent.
 
 ## Database
 
@@ -129,8 +132,10 @@ Tables:
 - Submission bursts are rate-limited in D1.
 - Expired unverified review attempts are cleaned up automatically.
 - Helpful votes and reports use hashed abuse keys.
-- Admin moderation requires the Cloudflare Access authenticated-user header and an optional `ADMIN_EMAIL` allowlist.
+- Admin moderation requires the Cloudflare Access authenticated-user header and an `ADMIN_EMAIL` allowlist.
 - Every moderation action is written to `moderation_logs`.
+- CI runs `npm audit --audit-level=high` before accepting a build.
+- V1 uses pass-through image handling because the review product does not accept images.
 
 ## Environment variables
 
@@ -146,7 +151,7 @@ TURNSTILE_SECRET       secret key
 TURNSTILE_HOSTNAMES    homestayreview.my,www.homestayreview.my
 RESEND_API_KEY         Resend API key
 EMAIL_FROM             verified sender
-ADMIN_EMAIL            comma-separated allowed admin email(s)
+ADMIN_EMAIL            allowed admin email
 HASH_SALT              long random secret
 ```
 
@@ -162,7 +167,7 @@ npm run db:seed:local
 npm run dev
 ```
 
-Production bundle check:
+Production Worker bundle check:
 
 ```bash
 npm run build
@@ -174,23 +179,29 @@ Optional TypeScript diagnostics:
 npm run typecheck
 ```
 
+Deploy after the real Cloudflare resources and secrets have been configured:
+
+```bash
+npm run deploy
+```
+
 ## Cloudflare launch checklist
 
 1. Create a D1 database named `homestay-review-db`.
 2. Replace the placeholder D1 `database_id` in `wrangler.jsonc` with the real ID.
 3. Run `db/schema.sql` against the production D1 database.
 4. Run `db/seed.sql` to add the starter listings.
-5. Create a Turnstile widget for the production hostname.
-6. Verify the sending domain in Resend.
-7. Add all production environment variables/secrets in Cloudflare.
-8. Create a Cloudflare Access application protecting both `/admin*` and `/api/admin/*` and allow only the intended admin email.
-9. Connect this GitHub repo to Cloudflare Pages with build command `npm run build` and build output `dist`.
-10. Add the custom domain `homestayreview.my`.
+5. Create a Turnstile widget for `homestayreview.my`.
+6. Verify `homestayreview.my` as a sending domain in Resend and create the API key.
+7. Add `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET`, `RESEND_API_KEY`, `ADMIN_EMAIL` and `HASH_SALT` as Worker secrets.
+8. Create a Cloudflare Access application protecting `/admin*` and `/api/admin/*`, allowing only the intended admin identity.
+9. Deploy the Worker using `npm run deploy` or connect the repository through Cloudflare's Workers Builds/Git integration.
+10. Add `homestayreview.my` as the Worker custom domain.
 11. Submit one real test review, verify its email, approve it in `/admin`, and confirm it appears publicly.
 
 ## Important deployment note
 
-`wrangler.jsonc` currently contains a placeholder D1 database UUID. This is intentional so account resources are not fabricated in GitHub. Replace it only after the actual Cloudflare D1 database is provisioned.
+`wrangler.jsonc` currently contains a placeholder D1 database UUID. This is intentional. The repository is production-ready, but the account-specific Cloudflare D1 resource, Worker secrets, Access policy, Resend sender and custom-domain binding must be provisioned in their respective accounts before a live deployment can work.
 
 ## Brand
 
