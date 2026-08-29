@@ -22,8 +22,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Install dependencies
-        run: npm install
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
       - name: Audit dependencies
         run: npm audit --audit-level=high
       - name: Validate D1 schema and seed
