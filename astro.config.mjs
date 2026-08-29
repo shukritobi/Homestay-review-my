@@ -5,9 +5,7 @@ export default defineConfig({
   site: 'https://homestayreview.my',
   output: 'server',
   adapter: cloudflare({
-    platformProxy: {
-      enabled: true
-    }
+    imageService: 'passthrough'
   }),
   trailingSlash: 'never'
 });
