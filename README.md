@@ -86,8 +86,6 @@ For a newly submitted homestay, approving its first verified review also activat
 - Resend for verification email
 - GitHub Actions for production bundle checks
 
-Astro sessions are explicitly disabled because this app does not need session storage.
-
 ## Database
 
 Schema:
@@ -128,6 +126,8 @@ Tables:
 - Reviewer emails are never exposed publicly.
 - IP and User-Agent abuse signals are salted + hashed before storage.
 - Duplicate review submissions for the same homestay/email are restricted.
+- Submission bursts are rate-limited in D1.
+- Expired unverified review attempts are cleaned up automatically.
 - Helpful votes and reports use hashed abuse keys.
 - Admin moderation requires the Cloudflare Access authenticated-user header and an optional `ADMIN_EMAIL` allowlist.
 - Every moderation action is written to `moderation_logs`.
@@ -146,8 +146,8 @@ TURNSTILE_SECRET       secret key
 TURNSTILE_HOSTNAMES    homestayreview.my,www.homestayreview.my
 RESEND_API_KEY         Resend API key
 EMAIL_FROM             verified sender
-ADMIN_EMAIL             comma-separated allowed admin email(s)
-HASH_SALT               long random secret
+ADMIN_EMAIL            comma-separated allowed admin email(s)
+HASH_SALT              long random secret
 ```
 
 Never commit real secrets.
@@ -190,7 +190,7 @@ npm run typecheck
 
 ## Important deployment note
 
-`wrangler.jsonc` currently contains a placeholder D1 database UUID. This is intentional so secrets/account resources are not fabricated in GitHub. Replace it only after the actual Cloudflare D1 database is provisioned.
+`wrangler.jsonc` currently contains a placeholder D1 database UUID. This is intentional so account resources are not fabricated in GitHub. Replace it only after the actual Cloudflare D1 database is provisioned.
 
 ## Brand
 
