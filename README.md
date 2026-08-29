@@ -1,141 +1,199 @@
 # HomestayReview.my
 
-A review-first directory for Malaysian homestays. No booking funnel, no OTA-style landing page and no automatic publishing. The product opens directly into searchable homestay listings and every submitted review must pass moderation before it becomes public.
+A review-first directory for Malaysian homestays. No booking funnel, no OTA-style landing page, no automatic publishing. The homepage is the searchable directory and every submitted review must be email-verified and manually moderated before it becomes public.
 
 ## Product direction
 
-### Design idea: Quiet editorial directory
+### Design: quiet editorial directory
 
-The interface deliberately avoids the visual language of booking sites. It uses a warm paper background, dark ink typography, coral as the only strong accent and serif text inside review excerpts. Ratings are treated as clear information blocks rather than promotional badges.
+The interface deliberately avoids the visual language of booking sites. It uses a warm paper background, dark ink typography, coral as the main accent, yellow for ratings and green for trust/moderation states. Review text is given more visual weight than property photography.
 
-Design tokens:
+Core design tokens:
 
 - Paper: `#f4f0e7`
 - Card: `#fffdf8`
 - Ink: `#171817`
-- Coral accent: `#ff5b45`
+- Coral: `#ff5b45`
 - Trust green: `#1f6b4f`
-- Large rounded cards: 20 to 28px
+- Large rounded cards: 20–28px
 - System sans-serif for UI, Georgia for guest review text
 
-### UX principles
+## UX principles
 
 1. The directory is the homepage.
-2. Search and filtering stay above the listings.
-3. A visitor can judge a listing from its score, review count, location, tags and one useful review excerpt.
-4. Detail pages put score distribution and reviews before secondary information.
-5. Writing a review does not require an account.
-6. Every review is email-verified and moderated before publication in the production flow.
-7. Missing homestays can be submitted from the same review form.
-8. Admin actions are simple: approve, reject, flag or request a change.
-9. The public UI is mobile-first and does not depend on property photography.
-10. Demo content is explicitly labeled so sample reviews are never presented as real user reviews.
+2. Search and filters sit directly above listings.
+3. No user account is required to write a review.
+4. Email verification happens before moderation.
+5. Verification never publishes a review.
+6. Only `approved` reviews are returned publicly.
+7. A missing homestay can be added from the same review form.
+8. New homestay listings remain private until moderation.
+9. Admin actions are approve, reject, flag, request changes or remove.
+10. No fabricated/sample reviews are included in production data.
 
-## Current prototype routes
+## Routes
 
-- `/` searchable homestay directory
-- `/homestay/[slug]` listing and review detail
-- `/review/submit` review submission experience
-- `/admin` moderation dashboard prototype
+### Public
 
-## Current prototype features
+- `/` — live D1-backed homestay directory
+- `/homestay/[slug]` — homestay rating distribution and approved reviews
+- `/review/submit` — review + missing-homestay submission
+- `/review/verify` — one-time email verification
 
-- Live text search
-- State filter
-- Rating filter
-- Category chips
-- Most-reviewed, highest-rated and alphabetical sorting
-- Responsive listing cards
-- Rating distribution
-- Guest review cards
-- Helpful interaction demo
-- Review form with rating, stay date, trip type, review and email fields
-- Client-side prototype submission confirmation
-- Admin moderation queue
-- Demo approve, reject, flag and request-change interactions
-- Cloudflare D1 schema in `db/schema.sql`
+### APIs
 
-## Production architecture
+- `GET /api/homestays/suggest` — homestay autocomplete
+- `POST /api/reviews/submit` — Turnstile-checked review submission
+- `POST /api/reviews/[id]/helpful` — helpful vote
+- `POST /api/reviews/[id]/report` — report an approved review
+- `POST /api/admin/reviews/[id]/action` — moderation action, protected by Cloudflare Access
+
+### Private
+
+- `/admin` — D1-backed moderation queue, designed to sit behind Cloudflare Access
+
+## Review lifecycle
 
 ```text
-Browser
-  |
-Cloudflare
-  |-- Astro UI
-  |-- Workers API
-  |-- Turnstile
-  |
-  |-- D1
-  |     |-- homestays
-  |     |-- reviews
-  |     |-- helpful_votes
-  |     |-- review_reports
-  |     `-- moderation_logs
-  |
-  `-- Resend email verification
-
-Review submission
-  -> Turnstile
-  -> rate limit
-  -> email verification
-  -> pending review
-  -> admin moderation
-  -> approved
-  -> public
+submit
+  ↓
+Cloudflare Turnstile
+  ↓
+pending_email
+  ↓
+verification email (24h token)
+  ↓
+pending
+  ↓
+private admin moderation
+  ├─ approve → public
+  ├─ reject
+  ├─ flag
+  ├─ request changes
+  └─ remove
 ```
 
-## Recommended production stack
+For a newly submitted homestay, approving its first verified review also activates the homestay listing.
 
-- Astro + TypeScript
-- Cloudflare Workers
+## Stack
+
+- Astro 5 + TypeScript
+- `@astrojs/cloudflare`
+- Cloudflare Pages / Pages Functions
 - Cloudflare D1
 - Cloudflare Turnstile
-- Cloudflare Access for `/admin`
-- Resend for email verification
-- Cloudflare R2 only if review or listing images are added later
+- Cloudflare Access for `/admin*` and `/api/admin/*`
+- Resend for verification email
+- GitHub Actions for production bundle checks
+
+Astro sessions are explicitly disabled because this app does not need session storage.
 
 ## Database
 
-The starter D1 schema is in:
+Schema:
 
 ```text
 db/schema.sql
 ```
 
-Only records with `reviews.status = 'approved'` should ever be returned by public review endpoints.
+Migration copy:
+
+```text
+db/migrations/0001_initial.sql
+```
+
+Starter listings:
+
+```text
+db/seed.sql
+```
+
+The seed contains real official homestay-program listings sourced from MOTAC and Tourism Malaysia. It intentionally contains **zero reviews and zero ratings**.
+
+Tables:
+
+- `homestays`
+- `reviews`
+- `review_verification_tokens`
+- `helpful_votes`
+- `review_reports`
+- `moderation_logs`
+
+## Security / abuse controls
+
+- Turnstile is always verified server-side.
+- Turnstile action and hostname are checked.
+- Verification tokens are stored only as SHA-256 hashes.
+- Verification links expire after 24 hours and are one-time use.
+- Reviewer emails are never exposed publicly.
+- IP and User-Agent abuse signals are salted + hashed before storage.
+- Duplicate review submissions for the same homestay/email are restricted.
+- Helpful votes and reports use hashed abuse keys.
+- Admin moderation requires the Cloudflare Access authenticated-user header and an optional `ADMIN_EMAIL` allowlist.
+- Every moderation action is written to `moderation_logs`.
+
+## Environment variables
+
+Copy `.dev.vars.example` to `.dev.vars` for local development.
+
+Required at production runtime:
+
+```text
+DB                     Cloudflare D1 binding
+APP_URL                https://homestayreview.my
+TURNSTILE_SITE_KEY     public widget key
+TURNSTILE_SECRET       secret key
+TURNSTILE_HOSTNAMES    homestayreview.my,www.homestayreview.my
+RESEND_API_KEY         Resend API key
+EMAIL_FROM             verified sender
+ADMIN_EMAIL             comma-separated allowed admin email(s)
+HASH_SALT               long random secret
+```
+
+Never commit real secrets.
 
 ## Local development
 
 ```bash
 npm install
+cp .dev.vars.example .dev.vars
+npm run db:init:local
+npm run db:seed:local
 npm run dev
 ```
 
-Build:
+Production bundle check:
 
 ```bash
 npm run build
 ```
 
-## Production work remaining
+Optional TypeScript diagnostics:
 
-The current repository is a working UI/UX prototype with static demo data. Before launch:
+```bash
+npm run typecheck
+```
 
-1. Switch Astro to the Cloudflare adapter.
-2. Create the D1 database and run `db/schema.sql`.
-3. Replace demo data with database queries.
-4. Create review submission and moderation API endpoints.
-5. Add Turnstile validation server-side.
-6. Add Resend email-verification tokens.
-7. Protect `/admin` with Cloudflare Access.
-8. Add rate limiting and hashed abuse signals.
-9. Add report-review flow.
-10. Add moderation audit entries for every admin action.
-11. Import the first real Malaysian homestay listing dataset.
-12. Remove demo records before enabling review structured data for SEO.
+## Cloudflare launch checklist
+
+1. Create a D1 database named `homestay-review-db`.
+2. Replace the placeholder D1 `database_id` in `wrangler.jsonc` with the real ID.
+3. Run `db/schema.sql` against the production D1 database.
+4. Run `db/seed.sql` to add the starter listings.
+5. Create a Turnstile widget for the production hostname.
+6. Verify the sending domain in Resend.
+7. Add all production environment variables/secrets in Cloudflare.
+8. Create a Cloudflare Access application protecting both `/admin*` and `/api/admin/*` and allow only the intended admin email.
+9. Connect this GitHub repo to Cloudflare Pages with build command `npm run build` and build output `dist`.
+10. Add the custom domain `homestayreview.my`.
+11. Submit one real test review, verify its email, approve it in `/admin`, and confirm it appears publicly.
+
+## Important deployment note
+
+`wrangler.jsonc` currently contains a placeholder D1 database UUID. This is intentional so secrets/account resources are not fabricated in GitHub. Replace it only after the actual Cloudflare D1 database is provisioned.
 
 ## Brand
 
 Preferred domain: `homestayreview.my`
 
-Brand lockup used in the interface: `homestay/review.my`
+Brand lockup: `homestay/review.my`
