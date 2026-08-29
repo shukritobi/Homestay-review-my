@@ -1,20 +1,60 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const env = Astro.locals.runtime.env;
+const siteKey = env.TURNSTILE_SITE_KEY || '';
+const requestedStay = Astro.url.searchParams.get('stay') || '';
+const requestedId = Astro.url.searchParams.get('id') || '';
+const states = [
+  'Johor', 'Kedah', 'Kelantan', 'Kuala Lumpur', 'Labuan', 'Melaka', 'Negeri Sembilan',
+  'Pahang', 'Penang', 'Perak', 'Perlis', 'Putrajaya', 'Sabah', 'Sarawak', 'Selangor', 'Terengganu'
+];
 ---
 
-<BaseLayout title="Write a homestay review | HomestayReview.my" description="Submit a homestay review for moderation on HomestayReview.my.">
+<BaseLayout title="Write a homestay review | HomestayReview.my" description="Submit a homestay review for private moderation on HomestayReview.my.">
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+
   <section class="form-shell">
     <div class="form-head">
       <p class="eyebrow">Share your stay</p>
       <h1>A useful review beats a perfect review.</h1>
-      <p>Tell the next guest what actually mattered. Every submission stays private until it has been checked and approved.</p>
+      <p>Tell the next guest what actually mattered. Every submission stays private until your email is verified and the review is manually approved.</p>
     </div>
 
     <div id="reviewFormCard" class="form-card">
-      <form id="reviewForm">
+      <form id="reviewForm" action="/api/reviews/submit" method="post">
+        <input id="homestayId" name="homestayId" type="hidden" value={requestedId} />
+
         <div class="form-section">
-          <label class="field-label" for="homestayName">Homestay <span class="field-hint">Can't find it? Type the name anyway. We can create the listing during moderation.</span></label>
-          <input id="homestayName" name="homestay" class="field" required placeholder="e.g. Rumah Rimbun, Janda Baik" />
+          <label class="field-label" for="homestayName">Homestay <span class="field-hint">Search an existing listing. If it is missing, keep typing and add the location below.</span></label>
+          <div class="autocomplete-wrap">
+            <input id="homestayName" name="homestay" class="field" required value={requestedStay} placeholder="e.g. Homestay Lonek" autocomplete="off" />
+            <div id="homestaySuggestions" class="autocomplete-results" role="listbox" aria-label="Homestay suggestions"></div>
+          </div>
+          <div id="selectedStay" class="selected-stay" style={requestedId ? '' : 'display:none'}>
+            <span>✓ Existing listing selected</span>
+            <button id="changeStay" type="button">Change</button>
+          </div>
+        </div>
+
+        <div id="newStayFields" class="form-section new-stay-fields" style={requestedId ? 'display:none' : ''}>
+          <div class="new-stay-note">
+            <strong>Not listed yet?</strong>
+            <span>Add the location. The new homestay will also stay private until you approve it.</span>
+          </div>
+          <div class="field-grid">
+            <label>
+              <span class="field-label">City / area</span>
+              <input class="field" id="cityField" name="city" placeholder="e.g. Bahau" />
+            </label>
+            <label>
+              <span class="field-label">State</span>
+              <select class="field" id="stateField" name="state">
+                <option value="">Choose state</option>
+                {states.map((state) => <option value={state}>{state}</option>)}
+              </select>
+            </label>
+          </div>
         </div>
 
         <div class="form-section">
@@ -60,12 +100,12 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
         <div class="form-section">
           <div class="field-grid">
             <label>
-              <span class="field-label">Your name <span class="field-hint">Shown publicly</span></span>
-              <input class="field" name="name" required placeholder="First name is enough" />
+              <span class="field-label">Your name <span class="field-hint">Shown publicly after approval</span></span>
+              <input class="field" name="name" maxlength="80" required placeholder="First name is enough" />
             </label>
             <label>
               <span class="field-label">Email <span class="field-hint">Never shown publicly</span></span>
-              <input class="field" name="email" type="email" required placeholder="you@example.com" />
+              <input class="field" name="email" type="email" maxlength="254" required placeholder="you@example.com" />
             </label>
           </div>
         </div>
@@ -73,37 +113,138 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
         <div class="form-section">
           <div class="form-note">
             <b>✓</b>
-            <span><strong>Nothing publishes instantly.</strong> In production, your email will be verified first, then the review enters the private moderation queue. It only appears after approval.</span>
+            <span><strong>Nothing publishes instantly.</strong> First verify your email. Then the review enters the private moderation queue and only appears after manual approval.</span>
           </div>
+
+          {siteKey ? (
+            <div class="turnstile-row">
+              <div class="cf-turnstile" data-sitekey={siteKey} data-action="submit_review" data-theme="light"></div>
+            </div>
+          ) : (
+            <div class="form-error visible">Turnstile is not configured yet. Add TURNSTILE_SITE_KEY before accepting reviews.</div>
+          )}
+
+          <div id="formError" class="form-error" role="alert"></div>
           <div class="submit-row">
             <small>By submitting, you confirm this is your own experience and the details are accurate to the best of your knowledge.</small>
-            <button class="button button-accent" type="submit">Submit for review →</button>
+            <button id="submitButton" class="button button-accent" type="submit" disabled={!siteKey}>Submit for review →</button>
           </div>
         </div>
       </form>
 
       <div id="successCard" class="success-card">
-        <div class="big-check">✓</div>
-        <h2>Sent to moderation.</h2>
-        <p>This prototype does not send data yet. In the production flow, the reviewer verifies their email and you receive the submission in your private approval queue.</p>
+        <div class="big-check">✉</div>
+        <p class="eyebrow">One more step</p>
+        <h2>Check your email.</h2>
+        <p id="successMessage">We sent a verification link. After you verify, the review moves into the private moderation queue.</p>
         <div style="margin-top:20px"><a class="button button-dark" href="/">Back to listings</a></div>
       </div>
     </div>
   </section>
 
   <script>
-    const params = new URLSearchParams(window.location.search);
-    const requestedStay = params.get('stay');
-    const homestayInput = document.querySelector('#homestayName');
-    if (requestedStay && homestayInput) homestayInput.value = requestedStay;
-
     const form = document.querySelector('#reviewForm');
     const success = document.querySelector('#successCard');
-    form?.addEventListener('submit', (event) => {
+    const successMessage = document.querySelector('#successMessage');
+    const errorBox = document.querySelector('#formError');
+    const submitButton = document.querySelector('#submitButton');
+    const homestayInput = document.querySelector('#homestayName');
+    const homestayIdInput = document.querySelector('#homestayId');
+    const suggestions = document.querySelector('#homestaySuggestions');
+    const selectedStay = document.querySelector('#selectedStay');
+    const newStayFields = document.querySelector('#newStayFields');
+    const cityField = document.querySelector('#cityField');
+    const stateField = document.querySelector('#stateField');
+    const changeStay = document.querySelector('#changeStay');
+    let searchTimer;
+    let selectedName = homestayInput?.value || '';
+
+    function setExistingStay(item) {
+      homestayIdInput.value = String(item.id);
+      homestayInput.value = item.name;
+      selectedName = item.name;
+      selectedStay.style.display = 'flex';
+      newStayFields.style.display = 'none';
+      cityField.required = false;
+      stateField.required = false;
+      suggestions.innerHTML = '';
+      suggestions.classList.remove('open');
+    }
+
+    function setNewStayMode() {
+      homestayIdInput.value = '';
+      selectedName = '';
+      selectedStay.style.display = 'none';
+      newStayFields.style.display = '';
+      cityField.required = true;
+      stateField.required = true;
+    }
+
+    if (!homestayIdInput.value) setNewStayMode();
+
+    changeStay?.addEventListener('click', () => {
+      setNewStayMode();
+      homestayInput.focus();
+      homestayInput.select();
+    });
+
+    homestayInput?.addEventListener('input', () => {
+      if (homestayIdInput.value && homestayInput.value !== selectedName) setNewStayMode();
+      window.clearTimeout(searchTimer);
+      const query = homestayInput.value.trim();
+      if (query.length < 2) {
+        suggestions.innerHTML = '';
+        suggestions.classList.remove('open');
+        return;
+      }
+
+      searchTimer = window.setTimeout(async () => {
+        try {
+          const response = await fetch(`/api/homestays/suggest?q=${encodeURIComponent(query)}`);
+          const data = await response.json();
+          suggestions.innerHTML = '';
+          for (const item of data.results || []) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'autocomplete-option';
+            button.innerHTML = `<strong>${item.name}</strong><span>${item.city} · ${item.state}${item.reviewCount ? ` · ${item.reviewCount} reviews` : ''}</span>`;
+            button.addEventListener('click', () => setExistingStay(item));
+            suggestions.appendChild(button);
+          }
+          suggestions.classList.toggle('open', Boolean((data.results || []).length));
+        } catch {
+          suggestions.classList.remove('open');
+        }
+      }, 220);
+    });
+
+    document.addEventListener('click', (event) => {
+      if (!event.target.closest('.autocomplete-wrap')) suggestions?.classList.remove('open');
+    });
+
+    form?.addEventListener('submit', async (event) => {
       event.preventDefault();
-      form.style.display = 'none';
-      success.style.display = 'block';
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      errorBox.textContent = '';
+      errorBox.classList.remove('visible');
+      submitButton.disabled = true;
+      submitButton.textContent = 'Submitting…';
+
+      try {
+        const response = await fetch(form.action, { method: 'POST', body: new FormData(form) });
+        const data = await response.json();
+        if (!response.ok || !data.ok) throw new Error(data.error || 'Could not submit the review.');
+
+        form.style.display = 'none';
+        success.style.display = 'block';
+        successMessage.textContent = data.message;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } catch (error) {
+        errorBox.textContent = error instanceof Error ? error.message : 'Could not submit the review.';
+        errorBox.classList.add('visible');
+        submitButton.disabled = false;
+        submitButton.textContent = 'Submit for review →';
+        if (window.turnstile) window.turnstile.reset();
+      }
     });
   </script>
 </BaseLayout>
