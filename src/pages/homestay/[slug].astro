@@ -1,0 +1,109 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { homestays } from '../../data/homestays';
+
+export function getStaticPaths() {
+  return homestays.map((stay) => ({ params: { slug: stay.slug }, props: { stay } }));
+}
+
+const { stay } = Astro.props;
+const maxBar = Math.max(...stay.distribution);
+---
+
+<BaseLayout title={`${stay.name} reviews | HomestayReview.my`} description={`Read guest reviews and ratings for ${stay.name} in ${stay.city}, ${stay.state}.`}>
+  <div class="detail-crumbs">
+    <a href="/">Malaysia</a> &nbsp;/&nbsp; <a href={`/?state=${encodeURIComponent(stay.state)}`}>{stay.state}</a> &nbsp;/&nbsp; {stay.name}
+  </div>
+
+  <section class="detail-hero">
+    <div class="detail-title">
+      <p class="eyebrow">{stay.city} · {stay.state}</p>
+      <h1>{stay.name}</h1>
+      <p class="location">Homestay · <span class="demo-badge">Prototype listing</span></p>
+      <p class="detail-summary">{stay.summary}</p>
+      <div class="tags" style="margin-top:18px">
+        {stay.tags.map((tag) => <span class="tag">{tag}</span>)}
+      </div>
+    </div>
+
+    <div class="detail-score-card" aria-label={`${stay.rating} out of 5 from ${stay.reviewCount} reviews`}>
+      <div class="detail-score-top">
+        <strong>{stay.rating.toFixed(1)}</strong>
+        <span>{stay.reviewCount}<br />reviews</span>
+      </div>
+      <div class="stars" aria-hidden="true">★★★★★</div>
+      <div class="rating-bars">
+        {[5, 4, 3, 2, 1].map((rating, index) => {
+          const amount = stay.distribution[index];
+          const width = maxBar ? (amount / maxBar) * 100 : 0;
+          return (
+            <div class="rating-bar-row">
+              <span>{rating}</span>
+              <div class="bar"><i style={`width:${width}%`}></i></div>
+              <span>{amount}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  </section>
+
+  <section class="detail-layout">
+    <div>
+      <div class="section-title">
+        <h2>Guest reviews</h2>
+        <span>Newest first</span>
+      </div>
+      <div class="review-list">
+        {stay.reviews.map((review) => (
+          <article class="review-card">
+            <div class="review-card-head">
+              <div>
+                <div class="stars" aria-label={`${review.rating} out of 5`}>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</div>
+                <h3>{review.title}</h3>
+              </div>
+              <span class="review-stay">Stayed {review.stay}</span>
+            </div>
+            <p class="review-body">“{review.body}”</p>
+            <div class="review-footer">
+              <div class="reviewer">
+                <span class="avatar">{review.author.slice(0, 1)}</span>
+                <span><strong>{review.author}</strong><br />Email verified</span>
+              </div>
+              <button class="helpful" type="button" data-count={review.helpful}>Helpful · <span>{review.helpful}</span></button>
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+
+    <aside class="detail-aside">
+      <div class="action-panel">
+        <p class="eyebrow">Stayed here?</p>
+        <h3>Leave the useful details behind.</h3>
+        <p>Share what the next guest should know. Your review stays private until it passes moderation.</p>
+        <a class="button button-dark button-wide" href={`/review/submit?stay=${encodeURIComponent(stay.name)}`}>Write a review</a>
+      </div>
+      <div class="mini-info">
+        <h4>How moderation works</h4>
+        <p>Reviews are email-verified, checked for spam and personally approved before publishing. Hosts cannot pay to remove a negative rating.</p>
+      </div>
+      <div class="mini-info">
+        <h4>Something wrong?</h4>
+        <p>Duplicate listing, wrong location or a review that needs attention? Reporting will route it back into the moderation queue.</p>
+      </div>
+    </aside>
+  </section>
+
+  <script>
+    document.querySelectorAll('.helpful').forEach((button) => {
+      button.addEventListener('click', () => {
+        if (button.dataset.clicked === '1') return;
+        button.dataset.clicked = '1';
+        const counter = button.querySelector('span');
+        counter.textContent = String(Number(counter.textContent || 0) + 1);
+        button.textContent = `Helpful ✓ · ${counter.textContent}`;
+      });
+    });
+  </script>
+</BaseLayout>
