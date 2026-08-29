@@ -18,5 +18,21 @@ jobs:
           node-version: 22
       - name: Install dependencies
         run: npm install
-      - name: Build
+      - name: Validate D1 schema and seed
+        run: |
+          python3 - <<'PY'
+          import pathlib
+          import sqlite3
+
+          db = sqlite3.connect(':memory:')
+          db.executescript(pathlib.Path('db/schema.sql').read_text())
+          db.executescript(pathlib.Path('db/seed.sql').read_text())
+
+          listings = db.execute('SELECT COUNT(*) FROM homestays').fetchone()[0]
+          reviews = db.execute('SELECT COUNT(*) FROM reviews').fetchone()[0]
+          assert listings >= 18, f'Expected starter listings, found {listings}'
+          assert reviews == 0, f'Seed must contain zero reviews, found {reviews}'
+          print(f'Validated {listings} starter listings and {reviews} seeded reviews')
+          PY
+      - name: Build Cloudflare bundle
         run: npm run build
