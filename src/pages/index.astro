@@ -1,0 +1,192 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { homestays, states } from '../data/homestays';
+
+const stateCounts = states.map((state) => ({
+  state,
+  count: homestays.filter((stay) => stay.state === state).length
+})).sort((a, b) => b.count - a.count);
+---
+
+<BaseLayout>
+  <section class="directory-head">
+    <div class="directory-title-row">
+      <div class="directory-title">
+        <p class="eyebrow">Malaysia homestay directory</p>
+        <h1>Find the stay.<br />Read what mattered.</h1>
+        <p>No booking noise. Just searchable homestays and guest reviews that are checked before they appear.</p>
+      </div>
+      <div class="directory-count">
+        <strong>{homestays.length}</strong>
+        <span>demo listings in this prototype</span>
+      </div>
+    </div>
+
+    <div class="search-wrap" role="search">
+      <div class="search-row">
+        <label class="search-box">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <input id="searchInput" type="search" placeholder="Search homestay, city or state" autocomplete="off" />
+        </label>
+        <select id="stateFilter" class="filter-select" aria-label="Filter by state">
+          <option value="">All states</option>
+          {states.map((state) => <option value={state}>{state}</option>)}
+        </select>
+        <select id="ratingFilter" class="filter-select" aria-label="Filter by rating">
+          <option value="0">Any rating</option>
+          <option value="4.5">4.5 and above</option>
+          <option value="4">4.0 and above</option>
+        </select>
+        <button id="searchButton" class="button button-dark search-submit" type="button">Search</button>
+      </div>
+      <div class="quick-filters" aria-label="Quick filters">
+        <button class="chip active" type="button" data-tag="">All stays</button>
+        <button class="chip" type="button" data-tag="Family">Family</button>
+        <button class="chip" type="button" data-tag="Quiet">Quiet</button>
+        <button class="chip" type="button" data-tag="Nature">Nature</button>
+        <button class="chip" type="button" data-tag="Groups">Groups</button>
+        <button class="chip" type="button" data-tag="Beach">Beach</button>
+        <button class="chip" type="button" data-tag="Walkable">Walkable</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="directory-layout">
+    <div>
+      <div class="feed-toolbar">
+        <p><strong id="resultCount">{homestays.length}</strong> places found</p>
+        <select id="sortFilter" class="sort-select" aria-label="Sort homestays">
+          <option value="reviewCount">Most reviewed</option>
+          <option value="rating">Highest rated</option>
+          <option value="name">A to Z</option>
+        </select>
+      </div>
+
+      <div id="listingFeed" class="listing-feed">
+        {homestays.map((stay) => {
+          const latest = stay.reviews[0];
+          return (
+            <a
+              class="listing-card"
+              href={`/homestay/${stay.slug}`}
+              data-name={stay.name.toLowerCase()}
+              data-city={stay.city.toLowerCase()}
+              data-state={stay.state}
+              data-rating={stay.rating}
+              data-reviews={stay.reviewCount}
+              data-tags={stay.tags.join('|')}
+            >
+              <div class="score-block" aria-label={`${stay.rating} out of 5`}>
+                <strong>{stay.rating.toFixed(1)}</strong>
+                <div class="stars" aria-hidden="true">★★★★★</div>
+                <span>{stay.reviewCount} reviews</span>
+              </div>
+              <div class="listing-main">
+                <div class="listing-meta">
+                  <span class="listing-location">{stay.city} · {stay.state}</span>
+                  <span class="demo-badge">Demo data</span>
+                </div>
+                <h2>{stay.name}</h2>
+                <p class="listing-summary">{stay.summary}</p>
+                <div class="tags">
+                  {stay.tags.map((tag) => <span class="tag">{tag}</span>)}
+                </div>
+                <div class="review-peek">
+                  <span class="review-mark">“</span>
+                  <p>{latest.body}</p>
+                </div>
+              </div>
+              <div class="card-arrow" aria-hidden="true">→</div>
+            </a>
+          );
+        })}
+      </div>
+      <div id="emptyState" class="empty-state">
+        <strong>No matches yet.</strong>
+        <p>Try another place or add the homestay so the community can review it.</p>
+        <a class="button button-dark button-small" href="/review/submit">Add a homestay</a>
+      </div>
+    </div>
+
+    <aside class="sidebar">
+      <div class="sidebar-card">
+        <h3>Browse by state</h3>
+        <div class="state-list">
+          {stateCounts.map(({ state, count }) => (
+            <button class="state-link state-shortcut" data-state={state} type="button">
+              <span>{state}</span><b>{count}</b>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div class="sidebar-card trust-note">
+        <div class="trust-icon">✓</div>
+        <h3>Checked before publishing</h3>
+        <p>Every submitted review enters a moderation queue first. Nothing appears publicly until it has been reviewed.</p>
+      </div>
+    </aside>
+  </section>
+
+  <script>
+    const searchInput = document.querySelector('#searchInput');
+    const stateFilter = document.querySelector('#stateFilter');
+    const ratingFilter = document.querySelector('#ratingFilter');
+    const sortFilter = document.querySelector('#sortFilter');
+    const feed = document.querySelector('#listingFeed');
+    const cards = [...document.querySelectorAll('.listing-card')];
+    const count = document.querySelector('#resultCount');
+    const empty = document.querySelector('#emptyState');
+    const chips = [...document.querySelectorAll('.chip')];
+    let activeTag = '';
+
+    function applyFilters() {
+      const query = searchInput.value.trim().toLowerCase();
+      const state = stateFilter.value;
+      const minRating = Number(ratingFilter.value || 0);
+      const sort = sortFilter.value;
+
+      const visible = cards.filter((card) => {
+        const haystack = `${card.dataset.name} ${card.dataset.city} ${card.dataset.state}`.toLowerCase();
+        const tags = (card.dataset.tags || '').split('|');
+        return (!query || haystack.includes(query)) &&
+          (!state || card.dataset.state === state) &&
+          Number(card.dataset.rating) >= minRating &&
+          (!activeTag || tags.includes(activeTag));
+      });
+
+      cards.forEach((card) => card.style.display = 'none');
+      visible.sort((a, b) => {
+        if (sort === 'rating') return Number(b.dataset.rating) - Number(a.dataset.rating);
+        if (sort === 'name') return (a.dataset.name || '').localeCompare(b.dataset.name || '');
+        return Number(b.dataset.reviews) - Number(a.dataset.reviews);
+      });
+      visible.forEach((card) => {
+        card.style.display = '';
+        feed.appendChild(card);
+      });
+      count.textContent = String(visible.length);
+      empty.style.display = visible.length ? 'none' : 'block';
+    }
+
+    searchInput.addEventListener('input', applyFilters);
+    stateFilter.addEventListener('change', applyFilters);
+    ratingFilter.addEventListener('change', applyFilters);
+    sortFilter.addEventListener('change', applyFilters);
+    document.querySelector('#searchButton').addEventListener('click', applyFilters);
+
+    chips.forEach((chip) => chip.addEventListener('click', () => {
+      chips.forEach((item) => item.classList.remove('active'));
+      chip.classList.add('active');
+      activeTag = chip.dataset.tag || '';
+      applyFilters();
+    }));
+
+    document.querySelectorAll('.state-shortcut').forEach((button) => button.addEventListener('click', () => {
+      stateFilter.value = button.dataset.state || '';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      applyFilters();
+    }));
+
+    applyFilters();
+  </script>
+</BaseLayout>
