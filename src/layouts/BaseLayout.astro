@@ -2,6 +2,7 @@
 import '../styles/global.css';
 import '../styles/production.css';
 import '../styles/hotelist.css';
+import '../styles/score.css';
 
 interface Props {
   title?: string;
@@ -12,7 +13,7 @@ interface Props {
 
 const {
   title = 'HomestayReview.my — Independent homestay rankings for Malaysia',
-  description = 'Find Malaysian homestays without paid ranking noise. Google scores are clearly labelled as external references and HomestayReview reviews are manually moderated.',
+  description = 'Find Malaysian homestays with a transparent independent score. No paid placement, visible sources and manually moderated HomestayReview reviews.',
   wide = false,
   map = false
 } = Astro.props;
@@ -40,7 +41,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site || Astro.url.origin).to
           <span>homestay</span><b>/</b><span>review</span><small>.my</small>
         </a>
         <nav class="header-actions" aria-label="Primary navigation">
-          <a class="text-link hide-mobile" href="/#method">How ranking works</a>
+          <a class="text-link hide-mobile" href="/#method">How H-Score works</a>
           <a class="text-link hide-mobile" href="/review/submit">Add a homestay</a>
           <a class="button button-dark button-small" href="/review/submit">Write a review</a>
         </nav>
@@ -51,10 +52,10 @@ const canonical = new URL(Astro.url.pathname, Astro.site || Astro.url.origin).to
     </main>
     <footer class="site-footer">
       <div class:list={['footer-inner', wide && 'header-wide']}>
-        <p><strong>homestay/review.my</strong> · No paid placement. Guest reviews are checked before publishing.</p>
+        <p><strong>homestay/review.my</strong> · Independent H-Score. No paid placement. Guest reviews are checked before publishing.</p>
         <div class="footer-links">
           <a href="/">Browse</a>
-          <a href="/#method">Ranking</a>
+          <a href="/#method">H-Score</a>
           <a href="/review/submit">Submit review</a>
           <a href="/admin">Admin</a>
         </div>
