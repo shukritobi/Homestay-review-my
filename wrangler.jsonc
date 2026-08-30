@@ -13,15 +13,6 @@
     "TURNSTILE_HOSTNAMES": "homestayreview.my,www.homestayreview.my",
     "EMAIL_FROM": "HomestayReview.my <reviews@homestayreview.my>"
   },
-  "secrets": {
-    "required": [
-      "TURNSTILE_SITE_KEY",
-      "TURNSTILE_SECRET",
-      "RESEND_API_KEY",
-      "ADMIN_EMAIL",
-      "HASH_SALT"
-    ]
-  },
   "d1_databases": [
     {
       "binding": "DB",
