@@ -1,32 +1,43 @@
 export type SocialMention = {
-  platform: 'threads' | 'x';
   author: string;
-  url: string;
+  profileUrl: string;
   postedAt: string | null;
   sentiment: 'positive' | 'mixed' | 'negative' | 'neutral';
   summary: string;
-  checkedAt: string;
 };
 
-// Only exact, confidently matched public posts belong here.
-// Social posts are displayed as external chatter and never affect H-Score.
-export const VERIFIED_SOCIAL_MENTIONS: Record<string, SocialMention[]> = {};
+// Public posts supplied by the user and matched to a named property.
+// They are shown as community mentions and do not affect H-Score.
+export const VERIFIED_SOCIAL_MENTIONS: Record<string, SocialMention[]> = {
+  'homestay-tok-jembal': [
+    {
+      author: 'nenaholidays',
+      profileUrl: 'https://www.threads.net/@nenaholidays',
+      postedAt: '2026-08-10',
+      sentiment: 'mixed',
+      summary: 'A guest accidentally damaged the sofa bed. The host said the guest paid compensation and they planned to replace the sofa.'
+    }
+  ],
+  'rr-homestay-sekinchan-tali-air-7': [
+    {
+      author: 'fayesnatasya',
+      profileUrl: 'https://www.threads.net/@fayesnatasya',
+      postedAt: '2026-07-16',
+      sentiment: 'positive',
+      summary: 'Shared as a premium Sekinchan staycation with two house units and a paddy-view setting.'
+    }
+  ],
+  'zara-homestay-klia': [
+    {
+      author: 'zara.homestay_klia',
+      profileUrl: 'https://www.threads.net/@zara.homestay_klia',
+      postedAt: '2026-07-20',
+      sentiment: 'neutral',
+      summary: 'The owner introduced the newly set-up homestay business and said the account was still building trust and followers.'
+    }
+  ]
+};
 
 export function getVerifiedSocialMentions(slug: string): SocialMention[] {
   return VERIFIED_SOCIAL_MENTIONS[slug] || [];
 }
-
-export function socialSearchUrls(propertyName: string) {
-  const query = encodeURIComponent(`\"${propertyName}\"`);
-  return {
-    threads: `https://www.threads.net/search?q=${query}`,
-    x: `https://x.com/search?q=${query}&src=typed_query&f=live`
-  };
-}
-
-export const SOCIAL_MENTION_COVERAGE = {
-  checkedListings: 100,
-  verifiedMentions: Object.values(VERIFIED_SOCIAL_MENTIONS).reduce((sum, items) => sum + items.length, 0),
-  checkedAt: '2026-08-31',
-  note: 'No exact property-level Threads or X posts were confidently verifiable through public indexing in this pass.'
-} as const;
