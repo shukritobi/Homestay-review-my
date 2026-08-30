@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -18,6 +21,58 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+      - name: One-time Astro 7 runtime migration
+        if: github.event_name == 'push'
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          import_line = "import { env } from 'cloudflare:workers';"
+          changed = []
+          for path in Path('src/pages').rglob('*'):
+              if not path.is_file() or path.suffix not in {'.astro', '.ts'}:
+                  continue
+              original = path.read_text()
+              text = original
+              legacy = ('Astro.locals.runtime.env' in text or 'locals.runtime.env' in text)
+              if not legacy:
+                  continue
+
+              text = re.sub(r'^\s*const env = (?:Astro\.locals|locals)\.runtime\.env;\s*\n', '', text, flags=re.MULTILINE)
+              text = text.replace('Astro.locals.runtime.env', 'env')
+              text = text.replace('locals.runtime.env', 'env')
+
+              if import_line not in text:
+                  if path.suffix == '.astro':
+                      if not text.startswith('---\n'):
+                          raise RuntimeError(f'Unexpected Astro frontmatter in {path}')
+                      text = text.replace('---\n', f'---\n{import_line}\n', 1)
+                  else:
+                      text = f'{import_line}\n{text}'
+
+              if text != original:
+                  path.write_text(text)
+                  changed.append(str(path))
+
+          leftovers = []
+          for path in Path('src/pages').rglob('*'):
+              if path.is_file() and path.suffix in {'.astro', '.ts'}:
+                  text = path.read_text()
+                  if '.runtime.env' in text:
+                      leftovers.append(str(path))
+          if leftovers:
+              raise RuntimeError(f'Legacy runtime env access remains in: {leftovers}')
+          print('Migrated:', ', '.join(changed) if changed else 'already clean')
+          PY
+
+          if ! git diff --quiet -- src/pages; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add src/pages
+            git commit -m "Migrate Cloudflare env access for Astro 7"
+            git push
+          fi
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
@@ -27,6 +82,12 @@ jobs:
         run: npm ci
       - name: Audit dependencies
         run: npm audit --audit-level=high
+      - name: Verify removed runtime API stays gone
+        run: |
+          if grep -R -n -E 'Astro\.locals\.runtime|locals\.runtime\.env' src/pages; then
+            echo 'Legacy Astro Cloudflare runtime access found.'
+            exit 1
+          fi
       - name: Validate D1 schema and seeds
         run: |
           python3 - <<'PY'
