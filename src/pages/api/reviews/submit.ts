@@ -1,3 +1,4 @@
+import { env } from 'cloudflare:workers';
 import type { APIRoute } from 'astro';
 import { findHomestayById, findHomestayByIdentity } from '../../../lib/db';
 import { sendVerificationEmail } from '../../../lib/email';
@@ -15,7 +16,6 @@ import {
 } from '../../../lib/security';
 
 export const POST: APIRoute = async ({ request, locals }) => {
-  const env = locals.runtime.env;
   const db = env.DB;
 
   if (!db || !env.TURNSTILE_SECRET || !env.RESEND_API_KEY || !env.HASH_SALT || !env.APP_URL) {

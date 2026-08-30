@@ -1,8 +1,9 @@
 ---
+import { env } from 'cloudflare:workers';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getHomestayBySlug } from '../../lib/db';
 
-const db = Astro.locals.runtime.env.DB;
+const db = env.DB;
 const slug = Astro.params.slug || '';
 let stay: Awaited<ReturnType<typeof getHomestayBySlug>> = null;
 

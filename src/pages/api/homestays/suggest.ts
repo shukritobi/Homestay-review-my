@@ -1,8 +1,9 @@
+import { env } from 'cloudflare:workers';
 import type { APIRoute } from 'astro';
 import { json } from '../../../lib/security';
 
 export const GET: APIRoute = async ({ request, locals }) => {
-  const db = locals.runtime.env.DB;
+  const db = env.DB;
   const query = new URL(request.url).searchParams.get('q')?.trim().slice(0, 80) || '';
   if (!db || query.length < 2) return json({ ok: true, results: [] });
 

@@ -1,3 +1,4 @@
+import { env } from 'cloudflare:workers';
 import type { APIRoute } from 'astro';
 import { getAdminIdentity } from '../../../../../lib/admin';
 import { refreshHomestayStats } from '../../../../../lib/db';
@@ -12,7 +13,6 @@ const statusByAction: Record<string, string> = {
 };
 
 export const POST: APIRoute = async ({ params, request, locals }) => {
-  const env = locals.runtime.env;
   const db = env.DB;
   const moderator = getAdminIdentity(request, env);
   if (!moderator) return json({ ok: false, error: 'Unauthorized.' }, 401);

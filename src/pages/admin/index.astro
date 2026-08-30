@@ -1,9 +1,8 @@
 ---
+import { env } from 'cloudflare:workers';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getAdminIdentity } from '../../lib/admin';
 import { getAdminStats, listPendingReviews } from '../../lib/db';
-
-const env = Astro.locals.runtime.env;
 const moderator = getAdminIdentity(Astro.request, env);
 const db = env.DB;
 

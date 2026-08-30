@@ -1,10 +1,10 @@
+import { env } from 'cloudflare:workers';
 import type { APIRoute } from 'astro';
 import { cleanMultiline, cleanText, isValidEmail, json, normalizeEmail, sha256 } from '../../../../lib/security';
 
 const allowedReasons = new Set(['fake', 'spam', 'wrong-homestay', 'personal-info', 'harassment', 'other']);
 
 export const POST: APIRoute = async ({ params, request, locals }) => {
-  const env = locals.runtime.env;
   const db = env.DB;
   const reviewId = Number(params.id);
   if (!db || !env.HASH_SALT) return json({ ok: false, error: 'Service unavailable.' }, 503);

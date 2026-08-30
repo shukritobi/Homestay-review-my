@@ -1,8 +1,8 @@
+import { env } from 'cloudflare:workers';
 import type { APIRoute } from 'astro';
 import { json, sha256 } from '../../../../lib/security';
 
 export const POST: APIRoute = async ({ params, request, locals }) => {
-  const env = locals.runtime.env;
   const db = env.DB;
   const reviewId = Number(params.id);
 

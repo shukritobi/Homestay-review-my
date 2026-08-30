@@ -1,7 +1,6 @@
 ---
+import { env } from 'cloudflare:workers';
 import BaseLayout from '../../layouts/BaseLayout.astro';
-
-const env = Astro.locals.runtime.env;
 const siteKey = env.TURNSTILE_SITE_KEY || '';
 const requestedStay = Astro.url.searchParams.get('stay') || '';
 const requestedId = Astro.url.searchParams.get('id') || '';
