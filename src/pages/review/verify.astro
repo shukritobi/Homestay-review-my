@@ -1,6 +1,7 @@
 ---
 import { env } from 'cloudflare:workers';
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import { sendAdminReviewAlert } from '../../lib/email';
 import { sha256 } from '../../lib/security';
 
 const db = env.DB;
@@ -12,7 +13,10 @@ if (db && rawToken.length >= 20 && rawToken.length <= 200) {
   try {
     const tokenHash = await sha256(rawToken);
     const token = await db.prepare(`
-      SELECT vt.id, vt.review_id, vt.expires_at, vt.used_at, r.status, r.email_verified, h.name AS homestay_name
+      SELECT
+        vt.id, vt.review_id, vt.expires_at, vt.used_at,
+        r.status, r.email_verified, r.reviewer_name, r.rating, r.review_title,
+        h.name AS homestay_name, h.slug AS homestay_slug
       FROM review_verification_tokens vt
       JOIN reviews r ON r.id = vt.review_id
       JOIN homestays h ON h.id = r.homestay_id
@@ -25,7 +29,11 @@ if (db && rawToken.length >= 20 && rawToken.length <= 200) {
       used_at: string | null;
       status: string;
       email_verified: number;
+      reviewer_name: string;
+      rating: number;
+      review_title: string;
       homestay_name: string;
+      homestay_slug: string;
     }>();
 
     if (!token) {
@@ -47,6 +55,30 @@ if (db && rawToken.length >= 20 && rawToken.length <= 200) {
             db.prepare(`UPDATE reviews SET email_verified = 1, status = 'pending' WHERE id = ? AND status = 'pending_email'`).bind(token.review_id)
           ]);
           state = 'success';
+
+          const adminEmails = (env.ADMIN_EMAIL || '')
+            .split(',')
+            .map((item) => item.trim().toLowerCase())
+            .filter(Boolean);
+
+          if (env.RESEND_API_KEY && env.EMAIL_FROM && env.APP_URL && adminEmails.length) {
+            try {
+              await sendAdminReviewAlert({
+                apiKey: env.RESEND_API_KEY,
+                from: env.EMAIL_FROM,
+                to: adminEmails,
+                reviewerName: token.reviewer_name,
+                homestayName: token.homestay_name,
+                reviewTitle: token.review_title,
+                rating: token.rating,
+                reviewId: token.review_id,
+                adminUrl: `${env.APP_URL.replace(/\/$/, '')}/admin`
+              });
+            } catch (error) {
+              // Verification must succeed even if the moderator alert temporarily fails.
+              console.error('Admin review alert failed', error);
+            }
+          }
         }
       }
     }
