@@ -6,6 +6,9 @@ export type HomestaySummary = {
   state: string;
   averageRating: number;
   reviewCount: number;
+  googleRating: number | null;
+  googleReviewCount: number;
+  googleMapsUrl: string | null;
   tags: string[];
   latestReview: string | null;
 };
@@ -28,6 +31,7 @@ export type HomestayDetail = HomestaySummary & {
   postcode: string | null;
   sourceName: string | null;
   sourceUrl: string | null;
+  googleDataCheckedAt: string | null;
   distribution: [number, number, number, number, number];
   reviews: PublicReview[];
 };
@@ -72,6 +76,9 @@ export async function listHomestays(db: D1Database): Promise<HomestaySummary[]> 
       h.state,
       h.average_rating,
       h.review_count,
+      h.google_rating,
+      h.google_review_count,
+      h.google_maps_url,
       h.tags_json,
       (
         SELECT r.review_body
@@ -82,7 +89,13 @@ export async function listHomestays(db: D1Database): Promise<HomestaySummary[]> 
       ) AS latest_review
     FROM homestays h
     WHERE h.status = 'active'
-    ORDER BY h.review_count DESC, h.average_rating DESC, h.name ASC
+    ORDER BY
+      CASE WHEN h.review_count > 0 THEN 1 ELSE 0 END DESC,
+      h.review_count DESC,
+      h.average_rating DESC,
+      COALESCE(h.google_rating, 0) DESC,
+      h.google_review_count DESC,
+      h.name ASC
     LIMIT 500
   `).all<{
     id: number;
@@ -92,6 +105,9 @@ export async function listHomestays(db: D1Database): Promise<HomestaySummary[]> 
     state: string;
     average_rating: number;
     review_count: number;
+    google_rating: number | null;
+    google_review_count: number | null;
+    google_maps_url: string | null;
     tags_json: string | null;
     latest_review: string | null;
   }>();
@@ -104,6 +120,9 @@ export async function listHomestays(db: D1Database): Promise<HomestaySummary[]> 
     state: row.state,
     averageRating: Number(row.average_rating || 0),
     reviewCount: Number(row.review_count || 0),
+    googleRating: row.google_rating === null ? null : Number(row.google_rating),
+    googleReviewCount: Number(row.google_review_count || 0),
+    googleMapsUrl: row.google_maps_url,
     tags: parseTags(row.tags_json),
     latestReview: row.latest_review
   }));
@@ -112,7 +131,8 @@ export async function listHomestays(db: D1Database): Promise<HomestaySummary[]> 
 export async function getHomestayBySlug(db: D1Database, slug: string): Promise<HomestayDetail | null> {
   const row = await db.prepare(`
     SELECT id, name, slug, address, city, district, state, postcode,
-           average_rating, review_count, tags_json, source_name, source_url
+           average_rating, review_count, google_rating, google_review_count,
+           google_maps_url, google_data_checked_at, tags_json, source_name, source_url
     FROM homestays
     WHERE slug = ? AND status = 'active'
     LIMIT 1
@@ -127,6 +147,10 @@ export async function getHomestayBySlug(db: D1Database, slug: string): Promise<H
     postcode: string | null;
     average_rating: number;
     review_count: number;
+    google_rating: number | null;
+    google_review_count: number | null;
+    google_maps_url: string | null;
+    google_data_checked_at: string | null;
     tags_json: string | null;
     source_name: string | null;
     source_url: string | null;
@@ -188,6 +212,10 @@ export async function getHomestayBySlug(db: D1Database, slug: string): Promise<H
     postcode: row.postcode,
     averageRating: Number(row.average_rating || 0),
     reviewCount: Number(row.review_count || 0),
+    googleRating: row.google_rating === null ? null : Number(row.google_rating),
+    googleReviewCount: Number(row.google_review_count || 0),
+    googleMapsUrl: row.google_maps_url,
+    googleDataCheckedAt: row.google_data_checked_at,
     tags: parseTags(row.tags_json),
     latestReview: reviewsResult.results[0]?.review_body || null,
     sourceName: row.source_name,
