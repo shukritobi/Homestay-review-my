@@ -12,6 +12,9 @@ CREATE TABLE IF NOT EXISTS homestays (
   latitude REAL,
   longitude REAL,
   google_maps_url TEXT,
+  google_rating REAL,
+  google_review_count INTEGER NOT NULL DEFAULT 0,
+  google_data_checked_at TEXT,
   website_url TEXT,
   facebook_url TEXT,
   instagram_url TEXT,
@@ -99,6 +102,7 @@ CREATE TABLE IF NOT EXISTS moderation_logs (
 CREATE INDEX IF NOT EXISTS idx_homestays_slug ON homestays(slug);
 CREATE INDEX IF NOT EXISTS idx_homestays_state_city ON homestays(state, city);
 CREATE INDEX IF NOT EXISTS idx_homestays_status ON homestays(status);
+CREATE INDEX IF NOT EXISTS idx_homestays_google_rank ON homestays(google_rating DESC, google_review_count DESC);
 CREATE INDEX IF NOT EXISTS idx_reviews_homestay_status ON reviews(homestay_id, status);
 CREATE INDEX IF NOT EXISTS idx_reviews_status_submitted ON reviews(status, submitted_at DESC);
 CREATE INDEX IF NOT EXISTS idx_reviews_email_homestay ON reviews(reviewer_email, homestay_id, submitted_at DESC);
