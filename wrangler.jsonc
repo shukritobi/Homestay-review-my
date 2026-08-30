@@ -13,6 +13,12 @@
     "TURNSTILE_HOSTNAMES": "homestayreview.my,www.homestayreview.my",
     "EMAIL_FROM": "HomestayReview.my <reviews@homestayreview.my>"
   },
+  "kv_namespaces": [
+    {
+      "binding": "SESSION",
+      "id": "0d3da1dca3524ac7b333886db3132df1"
+    }
+  ],
   "d1_databases": [
     {
       "binding": "DB",
