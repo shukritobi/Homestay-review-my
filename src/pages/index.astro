@@ -26,7 +26,7 @@ const stateCounts = states.map((state) => ({
       <div class="directory-title">
         <p class="eyebrow">Malaysia homestay reviews</p>
         <h1>Find the stay.<br />Read what mattered.</h1>
-        <p>No booking noise. Just searchable homestays and guest reviews that are checked before they appear.</p>
+        <p>No booking noise. Search real stays, see clearly-labelled Google reference scores, and read HomestayReview reviews only after they pass moderation.</p>
       </div>
       <div class="directory-count">
         <strong>{homestays.length}</strong>
@@ -82,56 +82,71 @@ const stateCounts = states.map((state) => ({
       </div>
 
       <div id="listingFeed" class="listing-feed">
-        {homestays.map((stay) => (
-          <a
-            class="listing-card"
-            href={`/homestay/${stay.slug}`}
-            data-name={stay.name.toLowerCase()}
-            data-city={stay.city.toLowerCase()}
-            data-state={stay.state}
-            data-rating={stay.averageRating}
-            data-reviews={stay.reviewCount}
-            data-tags={stay.tags.join('|')}
-          >
-            <div class:list={["score-block", stay.reviewCount === 0 && 'score-new']} aria-label={stay.reviewCount ? `${stay.averageRating} out of 5` : 'No approved reviews yet'}>
-              {stay.reviewCount ? (
-                <>
-                  <strong>{stay.averageRating.toFixed(1)}</strong>
-                  <div class="stars" aria-hidden="true">★★★★★</div>
-                  <span>{stay.reviewCount} {stay.reviewCount === 1 ? 'review' : 'reviews'}</span>
-                </>
-              ) : (
-                <>
-                  <strong>NEW</strong>
-                  <span>No reviews yet</span>
-                </>
-              )}
-            </div>
-            <div class="listing-main">
-              <div class="listing-meta">
-                <span class="listing-location">{stay.city} · {stay.state}</span>
-                {stay.reviewCount === 0 && <span class="new-badge">Be first</span>}
-              </div>
-              <h2>{stay.name}</h2>
-              {stay.tags.length > 0 && (
-                <div class="tags">
-                  {stay.tags.map((tag) => <span class="tag">{tag}</span>)}
-                </div>
-              )}
-              <div class:list={["review-peek", !stay.latestReview && 'review-peek-empty']}>
-                {stay.latestReview ? (
+        {homestays.map((stay) => {
+          const hasOwnReviews = stay.reviewCount > 0;
+          const hasGoogle = !hasOwnReviews && stay.googleRating !== null && stay.googleReviewCount > 0;
+          const effectiveRating = hasOwnReviews ? stay.averageRating : (stay.googleRating || 0);
+          const effectiveReviews = hasOwnReviews ? stay.reviewCount : stay.googleReviewCount;
+          return (
+            <a
+              class="listing-card"
+              href={`/homestay/${stay.slug}`}
+              data-name={stay.name.toLowerCase()}
+              data-city={stay.city.toLowerCase()}
+              data-state={stay.state}
+              data-rating={effectiveRating}
+              data-reviews={effectiveReviews}
+              data-tags={stay.tags.join('|')}
+            >
+              <div class:list={["score-block", !hasOwnReviews && 'score-new']} aria-label={hasOwnReviews ? `${stay.averageRating} out of 5 from HomestayReview reviews` : hasGoogle ? `${stay.googleRating} out of 5 on Google` : 'No approved reviews yet'}>
+                {hasOwnReviews ? (
                   <>
-                    <span class="review-mark">“</span>
-                    <p>{stay.latestReview}</p>
+                    <strong>{stay.averageRating.toFixed(1)}</strong>
+                    <div class="stars" aria-hidden="true">★★★★★</div>
+                    <span>{stay.reviewCount} HR {stay.reviewCount === 1 ? 'review' : 'reviews'}</span>
+                  </>
+                ) : hasGoogle ? (
+                  <>
+                    <strong>{stay.googleRating?.toFixed(1)}</strong>
+                    <div class="stars" aria-hidden="true">★★★★★</div>
+                    <span>Google · {stay.googleReviewCount.toLocaleString()}</span>
                   </>
                 ) : (
-                  <p>No approved reviews yet. Share the first useful stay report.</p>
+                  <>
+                    <strong>NEW</strong>
+                    <span>No reviews yet</span>
+                  </>
                 )}
               </div>
-            </div>
-            <div class="card-arrow" aria-hidden="true">→</div>
-          </a>
-        ))}
+              <div class="listing-main">
+                <div class="listing-meta">
+                  <span class="listing-location">{stay.city} · {stay.state}</span>
+                  {hasGoogle && <span class="new-badge">Google reference</span>}
+                  {!hasOwnReviews && !hasGoogle && <span class="new-badge">Be first</span>}
+                </div>
+                <h2>{stay.name}</h2>
+                {stay.tags.length > 0 && (
+                  <div class="tags">
+                    {stay.tags.map((tag) => <span class="tag">{tag}</span>)}
+                  </div>
+                )}
+                <div class:list={["review-peek", !stay.latestReview && 'review-peek-empty']}>
+                  {stay.latestReview ? (
+                    <>
+                      <span class="review-mark">“</span>
+                      <p>{stay.latestReview}</p>
+                    </>
+                  ) : hasGoogle ? (
+                    <p>{stay.googleReviewCount.toLocaleString()} Google reviews are referenced for ranking. No HomestayReview review has been published yet.</p>
+                  ) : (
+                    <p>No approved reviews yet. Share the first useful stay report.</p>
+                  )}
+                </div>
+              </div>
+              <div class="card-arrow" aria-hidden="true">→</div>
+            </a>
+          );
+        })}
       </div>
 
       <div id="emptyState" class="empty-state" style={homestays.length ? '' : 'display:block'}>
@@ -156,8 +171,8 @@ const stateCounts = states.map((state) => ({
       )}
       <div class="sidebar-card trust-note">
         <div class="trust-icon">✓</div>
-        <h3>Checked before publishing</h3>
-        <p>Every submitted review is email-verified and enters a private moderation queue first. Nothing appears publicly until approved.</p>
+        <h3>Sources stay separate</h3>
+        <p>Google scores are labelled as external references. HomestayReview reviews only appear after email verification and your manual approval.</p>
       </div>
       <div class="sidebar-card">
         <h3>Missing a place?</h3>
@@ -191,10 +206,10 @@ const stateCounts = states.map((state) => ({
       const visible = cards.filter((card) => {
         const haystack = `${card.dataset.name} ${card.dataset.city} ${card.dataset.state}`.toLowerCase();
         const tags = (card.dataset.tags || '').split('|');
-        const reviewCount = Number(card.dataset.reviews || 0);
+        const rating = Number(card.dataset.rating || 0);
         return (!query || haystack.includes(query)) &&
           (!state || card.dataset.state === state) &&
-          (!minRating || (reviewCount > 0 && Number(card.dataset.rating) >= minRating)) &&
+          (!minRating || rating >= minRating) &&
           (!activeTag || tags.includes(activeTag));
       });
 
