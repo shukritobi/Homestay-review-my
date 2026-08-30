@@ -4,6 +4,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getHomestayBySlug } from '../../lib/db';
 import { calculateHomestayScore, extractGuestInsights } from '../../lib/score';
 import { getAdditionalScoreSources, getVerifiedExternalRatings } from '../../data/externalRatings';
+import { getVerifiedSocialMentions, socialSearchUrls } from '../../data/socialMentions';
 
 const db = env.DB;
 const slug = Astro.params.slug || '';
@@ -18,6 +19,8 @@ try {
 if (!stay) Astro.response.status = 404;
 const maxBar = stay ? Math.max(...stay.distribution, 0) : 0;
 const verifiedExternalRatings = stay ? getVerifiedExternalRatings(stay.slug) : [];
+const socialMentions = stay ? getVerifiedSocialMentions(stay.slug) : [];
+const socialSearch = stay ? socialSearchUrls(stay.name) : null;
 const hScore = stay ? calculateHomestayScore({
   homestayReviewRating: stay.averageRating,
   homestayReviewCount: stay.reviewCount,
@@ -30,6 +33,7 @@ const googleMapsUrl = stay
   ? stay.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${stay.name} ${stay.city} ${stay.state} Malaysia`)}`
   : null;
 const sourceLabel = (platform: 'booking' | 'agoda' | 'facebook') => platform === 'booking' ? 'Booking.com' : platform === 'agoda' ? 'Agoda' : 'Facebook';
+const socialLabel = (platform: 'threads' | 'x') => platform === 'threads' ? 'Threads' : 'X / Twitter';
 const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const formatStay = (month: number | null, year: number | null) => {
   if (!year) return 'Date not provided';
@@ -160,6 +164,40 @@ const formatStay = (month: number | null, year: number | null) => {
         </div>
       </section>
 
+      <section class="social-chatter-section">
+        <div class="section-title">
+          <h2>Threads & X chatter</h2>
+          <span>{socialMentions.length ? `${socialMentions.length} exact public ${socialMentions.length === 1 ? 'mention' : 'mentions'} matched` : 'No exact public mention verified yet'}</span>
+        </div>
+
+        <div class="social-chatter-card">
+          {socialMentions.length ? (
+            <div class="social-mention-list">
+              {socialMentions.map((mention) => (
+                <a class="social-mention" href={mention.url} target="_blank" rel="nofollow noopener">
+                  <div class="social-mention-top">
+                    <strong>{socialLabel(mention.platform)}</strong>
+                    <span class:list={['social-sentiment', `social-${mention.sentiment}`]}>{mention.sentiment}</span>
+                  </div>
+                  <p>{mention.summary}</p>
+                  <small>{mention.author}{mention.postedAt ? ` · ${mention.postedAt}` : ''} · original post ↗</small>
+                </a>
+              ))}
+            </div>
+          ) : (
+            <p class="social-empty">We checked public indexing for this property but did not find an exact Threads/X post we could confidently treat as property-specific guest chatter. We do not import vague posts about the surrounding condo, city or development.</p>
+          )}
+
+          {socialSearch && (
+            <div class="social-search-actions">
+              <a href={socialSearch.threads} target="_blank" rel="nofollow noopener">Search Threads ↗</a>
+              <a href={socialSearch.x} target="_blank" rel="nofollow noopener">Search X ↗</a>
+            </div>
+          )}
+          <small class="social-disclaimer">Public social mentions are not verified stays and never affect H-Score. Summaries are paraphrased rather than copied verbatim.</small>
+        </div>
+      </section>
+
       <section class="detail-layout">
         <div>
           <div class="section-title">
@@ -236,6 +274,10 @@ const formatStay = (month: number | null, year: number | null) => {
           <div class="mini-info">
             <h4>Sources stay visible</h4>
             <p>Google, Booking.com and Agoda remain clearly labelled when verified. Facebook contributes only when a comparable public score and review count can be confirmed.</p>
+          </div>
+          <div class="mini-info">
+            <h4>Social chatter stays separate</h4>
+            <p>Threads and X posts can provide useful context, but they are not treated as verified stays and never change H-Score.</p>
           </div>
           <div class="mini-info">
             <h4>Negative reviews are allowed</h4>
