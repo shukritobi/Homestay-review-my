@@ -1,6 +1,5 @@
-INSERT OR IGNORE INTO homestays (name,slug,city,state,google_rating,google_review_count,source_name,source_url,status,google_data_checked_at)
-SELECT name,slug,city,state,rating,review_count,'Google Maps via SeekHomestay','https://seekhomestay.my/','active','2026-08-30'
-FROM (VALUES
+WITH v(name,slug,city,state,rating,review_count) AS (
+VALUES
 ('Bali Residences Sea View Suites Melaka','google-top-001','Melaka','Melaka',5.0,4854),
 ('Country Garden Danga Bay Sea View by Stayrene','google-top-002','Johor Bahru','Johor',5.0,2710),
 ('Central Residence Homestay @ Kuala Lumpur','google-top-003','Kuala Lumpur','Kuala Lumpur',5.0,537),
@@ -50,4 +49,8 @@ FROM (VALUES
 ('A Spacious 7BR Home w/ Private Swimming Pool','google-top-047','Langkawi','Kedah',5.0,26),
 ('PARTY HAUS for 22pax 7 bedrooms 8 toilets karaoke','google-top-048','Johor Bahru','Johor',5.0,26),
 ('Renovated Bluesky D&N Homestay 光@暗 小舍','google-top-049','Langkawi','Kedah',5.0,25),
-('Adam''s Homestay Desaru','google-top-050','Desaru','Johor',5.0,24)) AS v(name,slug,city,state,rating,review_count);
+('Adam''s Homestay Desaru','google-top-050','Desaru','Johor',5.0,24)
+)
+INSERT OR IGNORE INTO homestays (name,slug,city,state,google_rating,google_review_count,source_name,source_url,status,google_data_checked_at)
+SELECT name,slug,city,state,rating,review_count,'Google Maps via SeekHomestay','https://seekhomestay.my/','active','2026-08-30'
+FROM v;
