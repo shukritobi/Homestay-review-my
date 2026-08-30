@@ -15,238 +15,298 @@ try {
 }
 
 const states = [...new Set(homestays.map((stay) => stay.state))].sort();
-const stateCounts = states.map((state) => ({
-  state,
-  count: homestays.filter((stay) => stay.state === state).length
-})).sort((a, b) => b.count - a.count || a.state.localeCompare(b.state));
 ---
 
-<BaseLayout>
-  <section class="directory-head">
-    <div class="directory-title-row">
-      <div class="directory-title">
-        <p class="eyebrow">Malaysia homestay reviews</p>
-        <h1>Find the stay.<br />Read what mattered.</h1>
-        <p>No booking noise. Search real stays, see clearly-labelled Google reference scores, and read HomestayReview reviews only after they pass moderation.</p>
+<BaseLayout wide map title="HomestayReview.my — Malaysia homestays ranked without paid placement">
+  <div class="hlist-app">
+    <section class="hlist-topline">
+      <div class="hlist-pitch">
+        <h1>Malaysia's homestays. Ranked without paid placement.</h1>
+        <p>No booking noise. Google ratings stay clearly labelled as external references. HomestayReview scores only come from reviews approved on this site.</p>
       </div>
-      <div class="directory-count">
-        <strong>{homestays.length}</strong>
-        <span>homestays in the directory</span>
+      <div class="hlist-proof" aria-label="Directory principles">
+        <span class="strong">No paid ranking</span>
+        <span>{homestays.length} listings</span>
+        <span>Manual moderation</span>
       </div>
-    </div>
+    </section>
 
-    <div class="search-wrap" role="search">
-      <div class="search-row">
-        <label class="search-box">
-          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-          <input id="searchInput" type="search" placeholder="Search homestay, city or state" autocomplete="off" />
-        </label>
-        <select id="stateFilter" class="filter-select" aria-label="Filter by state">
-          <option value="">All states</option>
-          {states.map((state) => <option value={state}>{state}</option>)}
-        </select>
-        <select id="ratingFilter" class="filter-select" aria-label="Filter by rating">
-          <option value="0">Any rating</option>
-          <option value="4.5">4.5 and above</option>
-          <option value="4">4.0 and above</option>
-        </select>
-        <button id="searchButton" class="button button-dark search-submit" type="button">Search</button>
-      </div>
-      <div class="quick-filters" aria-label="Quick filters">
-        <button class="chip active" type="button" data-tag="">All stays</button>
-        <button class="chip" type="button" data-tag="Family">Family</button>
-        <button class="chip" type="button" data-tag="Quiet">Quiet</button>
-        <button class="chip" type="button" data-tag="Nature">Nature</button>
-        <button class="chip" type="button" data-tag="Groups">Groups</button>
-        <button class="chip" type="button" data-tag="Beach">Beach</button>
-        <button class="chip" type="button" data-tag="Walkable">Walkable</button>
-      </div>
-    </div>
-  </section>
+    <section class="hlist-controls" aria-label="Search and filters">
+      <label class="hlist-search">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <input id="searchInput" type="search" placeholder="Search homestay, city or state" autocomplete="off" />
+      </label>
 
-  {loadError && (
-    <div class="system-notice">
-      <strong>Directory temporarily unavailable.</strong>
-      <span>The database could not be loaded. No reviews or listings have been exposed.</span>
-    </div>
-  )}
+      <select id="stateFilter" class="hlist-control" aria-label="Filter by state">
+        <option value="">All Malaysia</option>
+        {states.map((state) => <option value={state}>{state}</option>)}
+      </select>
 
-  <section class="directory-layout">
-    <div>
-      <div class="feed-toolbar">
-        <p><strong id="resultCount">{homestays.length}</strong> places found</p>
-        <select id="sortFilter" class="sort-select" aria-label="Sort homestays">
-          <option value="reviewCount">Most reviewed</option>
-          <option value="rating">Highest rated</option>
-          <option value="name">A to Z</option>
-        </select>
-      </div>
+      <select id="ratingFilter" class="hlist-control" aria-label="Minimum rating">
+        <option value="0">Any rating</option>
+        <option value="4.9">4.9+ reference</option>
+        <option value="4.8">4.8+ reference</option>
+        <option value="4.5">4.5+ reference</option>
+      </select>
 
-      <div id="listingFeed" class="listing-feed">
-        {homestays.map((stay) => {
-          const hasOwnReviews = stay.reviewCount > 0;
-          const hasGoogle = !hasOwnReviews && stay.googleRating !== null && stay.googleReviewCount > 0;
-          const effectiveRating = hasOwnReviews ? stay.averageRating : (stay.googleRating || 0);
-          const effectiveReviews = hasOwnReviews ? stay.reviewCount : stay.googleReviewCount;
-          return (
-            <a
-              class="listing-card"
-              href={`/homestay/${stay.slug}`}
-              data-name={stay.name.toLowerCase()}
-              data-city={stay.city.toLowerCase()}
-              data-state={stay.state}
-              data-rating={effectiveRating}
-              data-reviews={effectiveReviews}
-              data-tags={stay.tags.join('|')}
-            >
-              <div class:list={["score-block", !hasOwnReviews && 'score-new']} aria-label={hasOwnReviews ? `${stay.averageRating} out of 5 from HomestayReview reviews` : hasGoogle ? `${stay.googleRating} out of 5 on Google` : 'No approved reviews yet'}>
-                {hasOwnReviews ? (
-                  <>
-                    <strong>{stay.averageRating.toFixed(1)}</strong>
-                    <div class="stars" aria-hidden="true">★★★★★</div>
-                    <span>{stay.reviewCount} HR {stay.reviewCount === 1 ? 'review' : 'reviews'}</span>
-                  </>
-                ) : hasGoogle ? (
-                  <>
-                    <strong>{stay.googleRating?.toFixed(1)}</strong>
-                    <div class="stars" aria-hidden="true">★★★★★</div>
-                    <span>Google · {stay.googleReviewCount.toLocaleString()}</span>
-                  </>
-                ) : (
-                  <>
-                    <strong>NEW</strong>
-                    <span>No reviews yet</span>
-                  </>
-                )}
-              </div>
-              <div class="listing-main">
-                <div class="listing-meta">
-                  <span class="listing-location">{stay.city} · {stay.state}</span>
-                  {hasGoogle && <span class="new-badge">Google reference</span>}
-                  {!hasOwnReviews && !hasGoogle && <span class="new-badge">Be first</span>}
-                </div>
-                <h2>{stay.name}</h2>
-                {stay.tags.length > 0 && (
-                  <div class="tags">
-                    {stay.tags.map((tag) => <span class="tag">{tag}</span>)}
-                  </div>
-                )}
-                <div class:list={["review-peek", !stay.latestReview && 'review-peek-empty']}>
-                  {stay.latestReview ? (
-                    <>
-                      <span class="review-mark">“</span>
-                      <p>{stay.latestReview}</p>
-                    </>
-                  ) : hasGoogle ? (
-                    <p>{stay.googleReviewCount.toLocaleString()} Google reviews are referenced for ranking. No HomestayReview review has been published yet.</p>
-                  ) : (
-                    <p>No approved reviews yet. Share the first useful stay report.</p>
-                  )}
-                </div>
-              </div>
-              <div class="card-arrow" aria-hidden="true">→</div>
-            </a>
-          );
-        })}
-      </div>
+      <select id="sortFilter" class="hlist-control" aria-label="Sort results">
+        <option value="reviews">Most reviewed</option>
+        <option value="rating">Highest rated</option>
+        <option value="name">A to Z</option>
+      </select>
 
-      <div id="emptyState" class="empty-state" style={homestays.length ? '' : 'display:block'}>
-        <strong>{homestays.length ? 'No matches yet.' : 'The directory is ready for its first listings.'}</strong>
-        <p>{homestays.length ? 'Try another place or add the homestay so the community can review it.' : 'Add a homestay with your review. Both stay private until moderation.'}</p>
-        <a class="button button-dark button-small" href="/review/submit">Add a homestay</a>
-      </div>
-    </div>
+      <a class="hlist-review-cta" href="/review/submit">+ Write a review</a>
+    </section>
 
-    <aside class="sidebar">
-      {stateCounts.length > 0 && (
-        <div class="sidebar-card">
-          <h3>Browse by state</h3>
-          <div class="state-list">
-            {stateCounts.map(({ state, count }) => (
-              <button class="state-link state-shortcut" data-state={state} type="button">
-                <span>{state}</span><b>{count}</b>
-              </button>
-            ))}
-          </div>
+    <section class="hlist-main">
+      <div class="hlist-results">
+        <div class="hlist-results-head">
+          <p><strong id="resultCount">{homestays.length}</strong> homestays</p>
+          <span class="hlist-results-note">Google = external reference · HR = our moderated reviews</span>
         </div>
-      )}
-      <div class="sidebar-card trust-note">
-        <div class="trust-icon">✓</div>
+
+        {loadError && (
+          <div class="hlist-load-error">
+            <strong>Directory temporarily unavailable.</strong> The database could not be loaded.
+          </div>
+        )}
+
+        <div id="listingFeed" class="hlist-list">
+          {homestays.map((stay, index) => {
+            const hasOwnReviews = stay.reviewCount > 0;
+            const hasGoogle = stay.googleRating !== null && stay.googleReviewCount > 0;
+            const effectiveRating = hasOwnReviews ? stay.averageRating : (stay.googleRating || 0);
+            const effectiveReviews = hasOwnReviews ? stay.reviewCount : stay.googleReviewCount;
+            const sourceLabel = hasOwnReviews ? 'HR score' : hasGoogle ? 'Google ref' : 'Unrated';
+            const summary = stay.latestReview
+              ? stay.latestReview
+              : hasGoogle
+                ? `${stay.googleReviewCount.toLocaleString()} Google reviews referenced. No HomestayReview review has been approved yet.`
+                : 'No approved HomestayReview review yet.';
+
+            return (
+              <a
+                class="hlist-card"
+                href={`/homestay/${stay.slug}`}
+                data-slug={stay.slug}
+                data-name={stay.name.toLowerCase()}
+                data-display-name={stay.name}
+                data-city={stay.city.toLowerCase()}
+                data-city-display={stay.city}
+                data-state={stay.state}
+                data-rating={effectiveRating}
+                data-reviews={effectiveReviews}
+                data-source={hasOwnReviews ? 'own' : hasGoogle ? 'google' : 'none'}
+              >
+                <div class:list={['hlist-score', !hasOwnReviews && hasGoogle && 'is-google']}>
+                  <strong>{effectiveRating > 0 ? effectiveRating.toFixed(1) : '—'}</strong>
+                  <small>{sourceLabel}</small>
+                  <i aria-hidden="true"></i>
+                </div>
+
+                <div class="hlist-card-copy">
+                  <div class="hlist-card-top">
+                    <span class="hlist-location">{stay.city} · {stay.state}</span>
+                    <span class="hlist-rank">#{String(index + 1).padStart(2, '0')}</span>
+                  </div>
+                  <h2>{stay.name}</h2>
+                  <div class="hlist-signals">
+                    {hasOwnReviews ? (
+                      <span class="hlist-signal own">✓ {stay.reviewCount.toLocaleString()} approved HR {stay.reviewCount === 1 ? 'review' : 'reviews'}</span>
+                    ) : hasGoogle ? (
+                      <span class="hlist-signal good">★ {stay.googleReviewCount.toLocaleString()} Google reviews</span>
+                    ) : (
+                      <span class="hlist-signal">No public score yet</span>
+                    )}
+                    <span class="hlist-signal">{stay.state}</span>
+                  </div>
+                  <p class="hlist-blurb">{summary}</p>
+                </div>
+
+                <span class="hlist-arrow" aria-hidden="true">›</span>
+              </a>
+            );
+          })}
+        </div>
+
+        <div id="emptyState" class="hlist-empty" hidden>
+          <strong>No matching homestays.</strong>
+          Try another location or rating filter.
+        </div>
+      </div>
+
+      <div class="hlist-map-wrap">
+        <div id="homestayMap" aria-label="Approximate map of homestay results"></div>
+        <div class="hlist-map-note">Pins show approximate state areas until exact property coordinates are verified.</div>
+        <div class="hlist-map-legend"><b>Green</b> = Google reference · <b>Black</b> = HomestayReview score</div>
+      </div>
+    </section>
+  </div>
+
+  <section id="method" class="hlist-method">
+    <div class="hlist-method-grid">
+      <article class="hlist-method-card lead">
+        <h3>No pay-to-play ranking.</h3>
+        <p>Homestays cannot pay to move up. Right now the directory sorts by visible review signals. As our own moderated review volume grows, <b>HomestayReview data takes priority</b>.</p>
+      </article>
+      <article class="hlist-method-card">
         <h3>Sources stay separate</h3>
-        <p>Google scores are labelled as external references. HomestayReview reviews only appear after email verification and your manual approval.</p>
-      </div>
-      <div class="sidebar-card">
-        <h3>Missing a place?</h3>
-        <p>Add it while writing your review. New listings also require approval.</p>
-        <a class="text-link" href="/review/submit">Add a homestay →</a>
-      </div>
-    </aside>
+        <p>A Google score is always labelled “Google ref.” It is never presented as a review collected by HomestayReview.my.</p>
+      </article>
+      <article class="hlist-method-card">
+        <h3>Human moderation</h3>
+        <p>Reviews submitted here are kept private until they pass the site's moderation flow. Reviewer email addresses are never public.</p>
+      </article>
+      <article class="hlist-method-card">
+        <h3>Built for deciding</h3>
+        <p>No booking engine, sponsored placement or affiliate ranking layer. Search, compare, inspect the signal, then decide where you want to stay.</p>
+      </article>
+    </div>
   </section>
 
-  <script>
-    const searchInput = document.querySelector('#searchInput');
-    const stateFilter = document.querySelector('#stateFilter');
-    const ratingFilter = document.querySelector('#ratingFilter');
-    const sortFilter = document.querySelector('#sortFilter');
-    const feed = document.querySelector('#listingFeed');
-    const cards = [...document.querySelectorAll('.listing-card')];
-    const count = document.querySelector('#resultCount');
-    const empty = document.querySelector('#emptyState');
-    const chips = [...document.querySelectorAll('.chip')];
-    let activeTag = '';
+  <script is:inline src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script is:inline>
+    (() => {
+      const searchInput = document.querySelector('#searchInput');
+      const stateFilter = document.querySelector('#stateFilter');
+      const ratingFilter = document.querySelector('#ratingFilter');
+      const sortFilter = document.querySelector('#sortFilter');
+      const feed = document.querySelector('#listingFeed');
+      const count = document.querySelector('#resultCount');
+      const empty = document.querySelector('#emptyState');
+      const cards = Array.from(document.querySelectorAll('.hlist-card'));
 
-    const initialState = new URLSearchParams(window.location.search).get('state');
-    if (initialState && stateFilter) stateFilter.value = initialState;
+      const stateCenters = {
+        'Johor': [1.74, 103.55],
+        'Kedah': [6.12, 100.37],
+        'Kelantan': [5.95, 102.20],
+        'Melaka': [2.20, 102.25],
+        'Negeri Sembilan': [2.73, 101.94],
+        'Pahang': [3.81, 103.33],
+        'Penang': [5.41, 100.33],
+        'Perak': [4.60, 101.09],
+        'Perlis': [6.44, 100.20],
+        'Sabah': [5.98, 116.07],
+        'Sarawak': [1.55, 110.36],
+        'Selangor': [3.07, 101.52],
+        'Terengganu': [5.31, 103.13],
+        'Kuala Lumpur': [3.14, 101.69],
+        'Putrajaya': [2.93, 101.70],
+        'Labuan': [5.28, 115.23]
+      };
 
-    function applyFilters() {
-      const query = searchInput?.value.trim().toLowerCase() || '';
-      const state = stateFilter?.value || '';
-      const minRating = Number(ratingFilter?.value || 0);
-      const sort = sortFilter?.value || 'reviewCount';
+      const hash = (value) => {
+        let h = 0;
+        for (let i = 0; i < value.length; i++) h = ((h << 5) - h + value.charCodeAt(i)) | 0;
+        return Math.abs(h);
+      };
 
-      const visible = cards.filter((card) => {
-        const haystack = `${card.dataset.name} ${card.dataset.city} ${card.dataset.state}`.toLowerCase();
-        const tags = (card.dataset.tags || '').split('|');
-        const rating = Number(card.dataset.rating || 0);
-        return (!query || haystack.includes(query)) &&
-          (!state || card.dataset.state === state) &&
-          (!minRating || rating >= minRating) &&
-          (!activeTag || tags.includes(activeTag));
+      const approxCoords = (card) => {
+        const center = stateCenters[card.dataset.state] || [4.25, 102.0];
+        const h = hash(card.dataset.slug || card.dataset.name || 'stay');
+        const angle = ((h % 360) * Math.PI) / 180;
+        const broad = ['Sabah', 'Sarawak', 'Pahang'].includes(card.dataset.state);
+        const radius = (broad ? 0.12 : 0.045) + ((h % 100) / 100) * (broad ? 0.32 : 0.14);
+        return [center[0] + Math.sin(angle) * radius, center[1] + Math.cos(angle) * radius];
+      };
+
+      let map = null;
+      const markerBySlug = new Map();
+      const visibleLayer = window.L ? window.L.layerGroup() : null;
+
+      if (window.L) {
+        map = window.L.map('homestayMap', { zoomControl: true, attributionControl: true, minZoom: 3 }).setView([4.2, 109.2], 5);
+        window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 18,
+          attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+        visibleLayer.addTo(map);
+
+        cards.forEach((card) => {
+          const coords = approxCoords(card);
+          const rating = Number(card.dataset.rating || 0);
+          const own = card.dataset.source === 'own';
+          const markerHtml = `<div class="hlist-map-marker ${own ? 'own' : ''}">${rating ? rating.toFixed(1) : '—'}</div>`;
+          const icon = window.L.divIcon({ className: 'hlist-div-icon', html: markerHtml, iconSize: [38, 28], iconAnchor: [19, 14] });
+          const marker = window.L.marker(coords, { icon });
+          marker.bindPopup(`<div class="hlist-popup"><strong>${card.dataset.displayName || ''}</strong><span>${card.dataset.cityDisplay || ''} · ${card.dataset.state || ''}</span><span><b>${rating ? rating.toFixed(1) : 'Unrated'}</b> · ${Number(card.dataset.reviews || 0).toLocaleString()} reviews/signals</span></div>`);
+          marker.on('click', () => {
+            cards.forEach((item) => item.classList.remove('is-active'));
+            card.classList.add('is-active');
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          });
+          markerBySlug.set(card.dataset.slug, marker);
+        });
+      }
+
+      const setMarkerActive = (card, active) => {
+        const marker = markerBySlug.get(card.dataset.slug);
+        if (!marker) return;
+        const el = marker.getElement();
+        if (!el) return;
+        const badge = el.querySelector('.hlist-map-marker');
+        badge?.classList.toggle('active', active);
+      };
+
+      cards.forEach((card) => {
+        card.addEventListener('mouseenter', () => setMarkerActive(card, true));
+        card.addEventListener('mouseleave', () => setMarkerActive(card, false));
       });
 
-      cards.forEach((card) => card.style.display = 'none');
-      visible.sort((a, b) => {
-        if (sort === 'rating') return Number(b.dataset.rating) - Number(a.dataset.rating) || Number(b.dataset.reviews) - Number(a.dataset.reviews);
-        if (sort === 'name') return (a.dataset.name || '').localeCompare(b.dataset.name || '');
-        return Number(b.dataset.reviews) - Number(a.dataset.reviews) || Number(b.dataset.rating) - Number(a.dataset.rating);
-      });
-      visible.forEach((card) => {
-        card.style.display = '';
-        feed?.appendChild(card);
-      });
-      if (count) count.textContent = String(visible.length);
-      if (empty) empty.style.display = visible.length ? 'none' : 'block';
-    }
+      const updateMap = (visibleCards, fit = false) => {
+        if (!map || !visibleLayer) return;
+        visibleLayer.clearLayers();
+        const points = [];
+        visibleCards.forEach((card) => {
+          const marker = markerBySlug.get(card.dataset.slug);
+          if (!marker) return;
+          visibleLayer.addLayer(marker);
+          points.push(marker.getLatLng());
+        });
+        if (fit && points.length) {
+          if (points.length === 1) map.setView(points[0], 9);
+          else map.fitBounds(window.L.latLngBounds(points).pad(.18), { maxZoom: 9 });
+        }
+      };
 
-    searchInput?.addEventListener('input', applyFilters);
-    stateFilter?.addEventListener('change', applyFilters);
-    ratingFilter?.addEventListener('change', applyFilters);
-    sortFilter?.addEventListener('change', applyFilters);
-    document.querySelector('#searchButton')?.addEventListener('click', applyFilters);
+      const applyFilters = (fitMap = false) => {
+        const query = (searchInput?.value || '').trim().toLowerCase();
+        const state = stateFilter?.value || '';
+        const minRating = Number(ratingFilter?.value || 0);
+        const sort = sortFilter?.value || 'reviews';
 
-    chips.forEach((chip) => chip.addEventListener('click', () => {
-      chips.forEach((item) => item.classList.remove('active'));
-      chip.classList.add('active');
-      activeTag = chip.dataset.tag || '';
-      applyFilters();
-    }));
+        const visible = cards.filter((card) => {
+          const haystack = `${card.dataset.name || ''} ${card.dataset.city || ''} ${card.dataset.state || ''}`.toLowerCase();
+          const rating = Number(card.dataset.rating || 0);
+          return (!query || haystack.includes(query)) && (!state || card.dataset.state === state) && (!minRating || rating >= minRating);
+        });
 
-    document.querySelectorAll('.state-shortcut').forEach((button) => button.addEventListener('click', () => {
-      if (stateFilter) stateFilter.value = button.dataset.state || '';
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      applyFilters();
-    }));
+        cards.forEach((card) => { card.hidden = true; });
+        visible.sort((a, b) => {
+          if (sort === 'rating') return Number(b.dataset.rating || 0) - Number(a.dataset.rating || 0) || Number(b.dataset.reviews || 0) - Number(a.dataset.reviews || 0);
+          if (sort === 'name') return (a.dataset.name || '').localeCompare(b.dataset.name || '');
+          return Number(b.dataset.reviews || 0) - Number(a.dataset.reviews || 0) || Number(b.dataset.rating || 0) - Number(a.dataset.rating || 0);
+        });
+        visible.forEach((card) => {
+          card.hidden = false;
+          feed?.appendChild(card);
+        });
 
-    applyFilters();
+        if (count) count.textContent = String(visible.length);
+        if (empty) empty.hidden = visible.length !== 0;
+        updateMap(visible, fitMap);
+      };
+
+      const initialState = new URLSearchParams(window.location.search).get('state');
+      if (initialState && stateFilter) stateFilter.value = initialState;
+
+      searchInput?.addEventListener('input', () => applyFilters(false));
+      stateFilter?.addEventListener('change', () => applyFilters(true));
+      ratingFilter?.addEventListener('change', () => applyFilters(true));
+      sortFilter?.addEventListener('change', () => applyFilters(false));
+
+      applyFilters(Boolean(initialState));
+      setTimeout(() => map?.invalidateSize(), 250);
+    })();
   </script>
 </BaseLayout>
