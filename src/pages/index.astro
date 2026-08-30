@@ -2,6 +2,7 @@
 import { env } from 'cloudflare:workers';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { listHomestays } from '../lib/db';
+import { calculateHomestayScore } from '../lib/score';
 
 const db = env.DB;
 let homestays: Awaited<ReturnType<typeof listHomestays>> = [];
@@ -14,20 +15,32 @@ try {
   loadError = true;
 }
 
-const states = [...new Set(homestays.map((stay) => stay.state))].sort();
+const rankedHomestays = homestays
+  .map((stay) => ({
+    ...stay,
+    hScore: calculateHomestayScore({
+      homestayReviewRating: stay.averageRating,
+      homestayReviewCount: stay.reviewCount,
+      googleRating: stay.googleRating,
+      googleReviewCount: stay.googleReviewCount
+    })
+  }))
+  .sort((a, b) => (b.hScore.score || 0) - (a.hScore.score || 0) || b.hScore.evidenceCount - a.hScore.evidenceCount || a.name.localeCompare(b.name));
+
+const states = [...new Set(rankedHomestays.map((stay) => stay.state))].sort();
 ---
 
-<BaseLayout wide map title="HomestayReview.my — Malaysia homestays ranked without paid placement">
+<BaseLayout wide map title="HomestayReview.my — Independent Malaysia homestay scores">
   <div class="hlist-app">
     <section class="hlist-topline">
       <div class="hlist-pitch">
-        <h1>Malaysia's homestays. Ranked without paid placement.</h1>
-        <p>No booking noise. Google ratings stay clearly labelled as external references. HomestayReview scores only come from reviews approved on this site.</p>
+        <h1>Malaysia's homestays. One independent score.</h1>
+        <p>HomestayReview Score blends the review signals we can verify, discounts tiny samples, and never accepts paid placement. Every source remains visible.</p>
       </div>
       <div class="hlist-proof" aria-label="Directory principles">
         <span class="strong">No paid ranking</span>
-        <span>{homestays.length} listings</span>
-        <span>Manual moderation</span>
+        <span>{rankedHomestays.length} listings</span>
+        <span>Transparent scoring</span>
       </div>
     </section>
 
@@ -42,16 +55,16 @@ const states = [...new Set(homestays.map((stay) => stay.state))].sort();
         {states.map((state) => <option value={state}>{state}</option>)}
       </select>
 
-      <select id="ratingFilter" class="hlist-control" aria-label="Minimum rating">
-        <option value="0">Any rating</option>
-        <option value="4.9">4.9+ reference</option>
-        <option value="4.8">4.8+ reference</option>
-        <option value="4.5">4.5+ reference</option>
+      <select id="scoreFilter" class="hlist-control" aria-label="Minimum HomestayReview Score">
+        <option value="0">Any H-Score</option>
+        <option value="90">H-Score 90+</option>
+        <option value="85">H-Score 85+</option>
+        <option value="80">H-Score 80+</option>
       </select>
 
       <select id="sortFilter" class="hlist-control" aria-label="Sort results">
-        <option value="reviews">Most reviewed</option>
-        <option value="rating">Highest rated</option>
+        <option value="score">Best H-Score</option>
+        <option value="evidence">Most evidence</option>
         <option value="name">A to Z</option>
       </select>
 
@@ -61,8 +74,8 @@ const states = [...new Set(homestays.map((stay) => stay.state))].sort();
     <section class="hlist-main">
       <div class="hlist-results">
         <div class="hlist-results-head">
-          <p><strong id="resultCount">{homestays.length}</strong> homestays</p>
-          <span class="hlist-results-note">Google = external reference · HR = our moderated reviews</span>
+          <p><strong id="resultCount">{rankedHomestays.length}</strong> homestays</p>
+          <span class="hlist-results-note">H-Score = weighted evidence · sources shown separately</span>
         </div>
 
         {loadError && (
@@ -72,17 +85,15 @@ const states = [...new Set(homestays.map((stay) => stay.state))].sort();
         )}
 
         <div id="listingFeed" class="hlist-list">
-          {homestays.map((stay, index) => {
+          {rankedHomestays.map((stay, index) => {
             const hasOwnReviews = stay.reviewCount > 0;
             const hasGoogle = stay.googleRating !== null && stay.googleReviewCount > 0;
-            const effectiveRating = hasOwnReviews ? stay.averageRating : (stay.googleRating || 0);
-            const effectiveReviews = hasOwnReviews ? stay.reviewCount : stay.googleReviewCount;
-            const sourceLabel = hasOwnReviews ? 'HR score' : hasGoogle ? 'Google ref' : 'Unrated';
+            const score = stay.hScore.score;
             const summary = stay.latestReview
               ? stay.latestReview
               : hasGoogle
-                ? `${stay.googleReviewCount.toLocaleString()} Google reviews referenced. No HomestayReview review has been approved yet.`
-                : 'No approved HomestayReview review yet.';
+                ? `${stay.googleReviewCount.toLocaleString()} Google reviews currently contribute as an external reference. Add a moderated HomestayReview report to strengthen the independent signal.`
+                : 'No verified review signal yet. Be the first guest to add one.';
 
             return (
               <a
@@ -94,13 +105,13 @@ const states = [...new Set(homestays.map((stay) => stay.state))].sort();
                 data-city={stay.city.toLowerCase()}
                 data-city-display={stay.city}
                 data-state={stay.state}
-                data-rating={effectiveRating}
-                data-reviews={effectiveReviews}
+                data-score={score || 0}
+                data-evidence={stay.hScore.evidenceCount}
                 data-source={hasOwnReviews ? 'own' : hasGoogle ? 'google' : 'none'}
               >
                 <div class:list={['hlist-score', !hasOwnReviews && hasGoogle && 'is-google']}>
-                  <strong>{effectiveRating > 0 ? effectiveRating.toFixed(1) : '—'}</strong>
-                  <small>{sourceLabel}</small>
+                  <strong>{score ?? '—'}</strong>
+                  <small>H-SCORE</small>
                   <i aria-hidden="true"></i>
                 </div>
 
@@ -111,14 +122,9 @@ const states = [...new Set(homestays.map((stay) => stay.state))].sort();
                   </div>
                   <h2>{stay.name}</h2>
                   <div class="hlist-signals">
-                    {hasOwnReviews ? (
-                      <span class="hlist-signal own">✓ {stay.reviewCount.toLocaleString()} approved HR {stay.reviewCount === 1 ? 'review' : 'reviews'}</span>
-                    ) : hasGoogle ? (
-                      <span class="hlist-signal good">★ {stay.googleReviewCount.toLocaleString()} Google reviews</span>
-                    ) : (
-                      <span class="hlist-signal">No public score yet</span>
-                    )}
-                    <span class="hlist-signal">{stay.state}</span>
+                    <span class:list={['hlist-signal', `confidence-${stay.hScore.confidence}`]}>{stay.hScore.confidence.toUpperCase()} confidence</span>
+                    {hasGoogle && <span class="hlist-signal good">★ Google {stay.googleRating?.toFixed(1)} · {stay.googleReviewCount.toLocaleString()}</span>}
+                    {hasOwnReviews && <span class="hlist-signal own">✓ HR {stay.averageRating.toFixed(1)} · {stay.reviewCount.toLocaleString()}</span>}
                   </div>
                   <p class="hlist-blurb">{summary}</p>
                 </div>
@@ -131,14 +137,14 @@ const states = [...new Set(homestays.map((stay) => stay.state))].sort();
 
         <div id="emptyState" class="hlist-empty" hidden>
           <strong>No matching homestays.</strong>
-          Try another location or rating filter.
+          Try another location or score filter.
         </div>
       </div>
 
       <div class="hlist-map-wrap">
         <div id="homestayMap" aria-label="Approximate map of homestay results"></div>
         <div class="hlist-map-note">Pins show approximate state areas until exact property coordinates are verified.</div>
-        <div class="hlist-map-legend"><b>Green</b> = Google reference · <b>Black</b> = HomestayReview score</div>
+        <div class="hlist-map-legend"><b>Number</b> = HomestayReview Score · click a pin to inspect the listing</div>
       </div>
     </section>
   </div>
@@ -146,20 +152,20 @@ const states = [...new Set(homestays.map((stay) => stay.state))].sort();
   <section id="method" class="hlist-method">
     <div class="hlist-method-grid">
       <article class="hlist-method-card lead">
-        <h3>No pay-to-play ranking.</h3>
-        <p>Homestays cannot pay to move up. Right now the directory sorts by visible review signals. As our own moderated review volume grows, <b>HomestayReview data takes priority</b>.</p>
+        <h3>A 5.0 with 8 reviews is not a 5.0 with 800.</h3>
+        <p>H-Score uses Bayesian shrinkage and review-volume confidence so tiny samples do not automatically dominate the ranking.</p>
       </article>
       <article class="hlist-method-card">
-        <h3>Sources stay separate</h3>
-        <p>A Google score is always labelled “Google ref.” It is never presented as a review collected by HomestayReview.my.</p>
+        <h3>Our reviews get priority</h3>
+        <p>As approved HomestayReview reports accumulate, they receive the strongest base weight. External ratings support the score but do not masquerade as our reviews.</p>
       </article>
       <article class="hlist-method-card">
-        <h3>Human moderation</h3>
-        <p>Reviews submitted here are kept private until they pass the site's moderation flow. Reviewer email addresses are never public.</p>
+        <h3>More sources, more confidence</h3>
+        <p>The scoring engine is ready for additional verified sources such as Booking, Agoda or Facebook. Each source will remain visible in the breakdown.</p>
       </article>
       <article class="hlist-method-card">
-        <h3>Built for deciding</h3>
-        <p>No booking engine, sponsored placement or affiliate ranking layer. Search, compare, inspect the signal, then decide where you want to stay.</p>
+        <h3>No pay-to-play ranking</h3>
+        <p>Homestays cannot buy a higher H-Score. The score is calculated from review evidence and sample confidence, not commercial placement.</p>
       </article>
     </div>
   </section>
@@ -169,7 +175,7 @@ const states = [...new Set(homestays.map((stay) => stay.state))].sort();
     (() => {
       const searchInput = document.querySelector('#searchInput');
       const stateFilter = document.querySelector('#stateFilter');
-      const ratingFilter = document.querySelector('#ratingFilter');
+      const scoreFilter = document.querySelector('#scoreFilter');
       const sortFilter = document.querySelector('#sortFilter');
       const feed = document.querySelector('#listingFeed');
       const count = document.querySelector('#resultCount');
@@ -177,22 +183,10 @@ const states = [...new Set(homestays.map((stay) => stay.state))].sort();
       const cards = Array.from(document.querySelectorAll('.hlist-card'));
 
       const stateCenters = {
-        'Johor': [1.74, 103.55],
-        'Kedah': [6.12, 100.37],
-        'Kelantan': [5.95, 102.20],
-        'Melaka': [2.20, 102.25],
-        'Negeri Sembilan': [2.73, 101.94],
-        'Pahang': [3.81, 103.33],
-        'Penang': [5.41, 100.33],
-        'Perak': [4.60, 101.09],
-        'Perlis': [6.44, 100.20],
-        'Sabah': [5.98, 116.07],
-        'Sarawak': [1.55, 110.36],
-        'Selangor': [3.07, 101.52],
-        'Terengganu': [5.31, 103.13],
-        'Kuala Lumpur': [3.14, 101.69],
-        'Putrajaya': [2.93, 101.70],
-        'Labuan': [5.28, 115.23]
+        'Johor': [1.74, 103.55], 'Kedah': [6.12, 100.37], 'Kelantan': [5.95, 102.20], 'Melaka': [2.20, 102.25],
+        'Negeri Sembilan': [2.73, 101.94], 'Pahang': [3.81, 103.33], 'Penang': [5.41, 100.33], 'Perak': [4.60, 101.09],
+        'Perlis': [6.44, 100.20], 'Sabah': [5.98, 116.07], 'Sarawak': [1.55, 110.36], 'Selangor': [3.07, 101.52],
+        'Terengganu': [5.31, 103.13], 'Kuala Lumpur': [3.14, 101.69], 'Putrajaya': [2.93, 101.70], 'Labuan': [5.28, 115.23]
       };
 
       const hash = (value) => {
@@ -224,12 +218,12 @@ const states = [...new Set(homestays.map((stay) => stay.state))].sort();
 
         cards.forEach((card) => {
           const coords = approxCoords(card);
-          const rating = Number(card.dataset.rating || 0);
+          const score = Number(card.dataset.score || 0);
           const own = card.dataset.source === 'own';
-          const markerHtml = `<div class="hlist-map-marker ${own ? 'own' : ''}">${rating ? rating.toFixed(1) : '—'}</div>`;
-          const icon = window.L.divIcon({ className: 'hlist-div-icon', html: markerHtml, iconSize: [38, 28], iconAnchor: [19, 14] });
+          const markerHtml = `<div class="hlist-map-marker ${own ? 'own' : ''}">${score || '—'}</div>`;
+          const icon = window.L.divIcon({ className: 'hlist-div-icon', html: markerHtml, iconSize: [42, 28], iconAnchor: [21, 14] });
           const marker = window.L.marker(coords, { icon });
-          marker.bindPopup(`<div class="hlist-popup"><strong>${card.dataset.displayName || ''}</strong><span>${card.dataset.cityDisplay || ''} · ${card.dataset.state || ''}</span><span><b>${rating ? rating.toFixed(1) : 'Unrated'}</b> · ${Number(card.dataset.reviews || 0).toLocaleString()} reviews/signals</span></div>`);
+          marker.bindPopup(`<div class="hlist-popup"><strong>${card.dataset.displayName || ''}</strong><span>${card.dataset.cityDisplay || ''} · ${card.dataset.state || ''}</span><span><b>H-Score ${score || 'Unrated'}</b> · ${Number(card.dataset.evidence || 0).toLocaleString()} review signals</span></div>`);
           marker.on('click', () => {
             cards.forEach((item) => item.classList.remove('is-active'));
             card.classList.add('is-active');
@@ -242,9 +236,7 @@ const states = [...new Set(homestays.map((stay) => stay.state))].sort();
       const setMarkerActive = (card, active) => {
         const marker = markerBySlug.get(card.dataset.slug);
         if (!marker) return;
-        const el = marker.getElement();
-        if (!el) return;
-        const badge = el.querySelector('.hlist-map-marker');
+        const badge = marker.getElement()?.querySelector('.hlist-map-marker');
         badge?.classList.toggle('active', active);
       };
 
@@ -272,20 +264,20 @@ const states = [...new Set(homestays.map((stay) => stay.state))].sort();
       const applyFilters = (fitMap = false) => {
         const query = (searchInput?.value || '').trim().toLowerCase();
         const state = stateFilter?.value || '';
-        const minRating = Number(ratingFilter?.value || 0);
-        const sort = sortFilter?.value || 'reviews';
+        const minScore = Number(scoreFilter?.value || 0);
+        const sort = sortFilter?.value || 'score';
 
         const visible = cards.filter((card) => {
           const haystack = `${card.dataset.name || ''} ${card.dataset.city || ''} ${card.dataset.state || ''}`.toLowerCase();
-          const rating = Number(card.dataset.rating || 0);
-          return (!query || haystack.includes(query)) && (!state || card.dataset.state === state) && (!minRating || rating >= minRating);
+          const score = Number(card.dataset.score || 0);
+          return (!query || haystack.includes(query)) && (!state || card.dataset.state === state) && (!minScore || score >= minScore);
         });
 
         cards.forEach((card) => { card.hidden = true; });
         visible.sort((a, b) => {
-          if (sort === 'rating') return Number(b.dataset.rating || 0) - Number(a.dataset.rating || 0) || Number(b.dataset.reviews || 0) - Number(a.dataset.reviews || 0);
+          if (sort === 'evidence') return Number(b.dataset.evidence || 0) - Number(a.dataset.evidence || 0) || Number(b.dataset.score || 0) - Number(a.dataset.score || 0);
           if (sort === 'name') return (a.dataset.name || '').localeCompare(b.dataset.name || '');
-          return Number(b.dataset.reviews || 0) - Number(a.dataset.reviews || 0) || Number(b.dataset.rating || 0) - Number(a.dataset.rating || 0);
+          return Number(b.dataset.score || 0) - Number(a.dataset.score || 0) || Number(b.dataset.evidence || 0) - Number(a.dataset.evidence || 0);
         });
         visible.forEach((card) => {
           card.hidden = false;
@@ -302,7 +294,7 @@ const states = [...new Set(homestays.map((stay) => stay.state))].sort();
 
       searchInput?.addEventListener('input', () => applyFilters(false));
       stateFilter?.addEventListener('change', () => applyFilters(true));
-      ratingFilter?.addEventListener('change', () => applyFilters(true));
+      scoreFilter?.addEventListener('change', () => applyFilters(true));
       sortFilter?.addEventListener('change', () => applyFilters(false));
 
       applyFilters(Boolean(initialState));
