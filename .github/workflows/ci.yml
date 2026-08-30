@@ -49,3 +49,36 @@ jobs:
           PY
       - name: Build Cloudflare Worker
         run: npm run build
+      - name: Prepare local D1 for runtime smoke test
+        run: |
+          npx wrangler d1 execute homestay-review-db --local --file=./db/schema.sql
+          npx wrangler d1 execute homestay-review-db --local --file=./db/seed_google_top100_a.sql
+          npx wrangler d1 execute homestay-review-db --local --file=./db/seed_google_top100_b.sql
+      - name: Smoke test rendered homepage in workerd
+        run: |
+          set -euo pipefail
+          npx astro preview --host 127.0.0.1 --port 8787 > /tmp/astro-preview.log 2>&1 &
+          PREVIEW_PID=$!
+          trap 'kill $PREVIEW_PID 2>/dev/null || true' EXIT
+
+          READY=0
+          for i in $(seq 1 30); do
+            if curl -sS -D /tmp/home.headers -o /tmp/home.body http://127.0.0.1:8787/; then
+              READY=1
+              break
+            fi
+            sleep 1
+          done
+
+          echo '--- preview log ---'
+          cat /tmp/astro-preview.log || true
+          echo '--- response headers ---'
+          cat /tmp/home.headers || true
+          echo '--- response body ---'
+          head -c 1200 /tmp/home.body || true
+          echo
+
+          test "$READY" = "1"
+          grep -Eq '^HTTP/.* 200' /tmp/home.headers
+          grep -Eiq '^content-type:.*text/html' /tmp/home.headers
+          grep -q 'homestay' /tmp/home.body
