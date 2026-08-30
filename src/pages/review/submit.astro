@@ -2,6 +2,9 @@
 import { env } from 'cloudflare:workers';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 const siteKey = env.TURNSTILE_SITE_KEY || '';
+const reviewServiceReady = Boolean(
+  siteKey && env.TURNSTILE_SECRET && env.RESEND_API_KEY && env.ADMIN_EMAIL && env.HASH_SALT && env.APP_URL && env.EMAIL_FROM
+);
 const requestedStay = Astro.url.searchParams.get('stay') || '';
 const requestedId = Astro.url.searchParams.get('id') || '';
 const states = [
@@ -11,7 +14,7 @@ const states = [
 ---
 
 <BaseLayout title="Write a homestay review | HomestayReview.my" description="Submit a homestay review for private moderation on HomestayReview.my.">
-  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  {siteKey && <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>}
 
   <section class="form-shell">
     <div class="form-head">
@@ -23,6 +26,9 @@ const states = [
     <div id="reviewFormCard" class="form-card">
       <form id="reviewForm" action="/api/reviews/submit" method="post">
         <input id="homestayId" name="homestayId" type="hidden" value={requestedId} />
+        <div class="hp-field" aria-hidden="true">
+          <label>Website <input name="website" type="text" tabindex="-1" autocomplete="off" /></label>
+        </div>
 
         <div class="form-section">
           <label class="field-label" for="homestayName">Homestay <span class="field-hint">Search an existing listing. If it is missing, keep typing and add the location below.</span></label>
@@ -115,18 +121,18 @@ const states = [
             <span><strong>Nothing publishes instantly.</strong> First verify your email. Then the review enters the private moderation queue and only appears after manual approval.</span>
           </div>
 
-          {siteKey ? (
+          {reviewServiceReady ? (
             <div class="turnstile-row">
               <div class="cf-turnstile" data-sitekey={siteKey} data-action="submit_review" data-theme="light"></div>
             </div>
           ) : (
-            <div class="form-error visible">Turnstile is not configured yet. Add TURNSTILE_SITE_KEY before accepting reviews.</div>
+            <div class="form-error visible"><strong>Review submissions are not open yet.</strong> Email verification, bot protection and the private moderation inbox are still being connected.</div>
           )}
 
           <div id="formError" class="form-error" role="alert"></div>
           <div class="submit-row">
             <small>By submitting, you confirm this is your own experience and the details are accurate to the best of your knowledge.</small>
-            <button id="submitButton" class="button button-accent" type="submit" disabled={!siteKey}>Submit for review →</button>
+            <button id="submitButton" class="button button-accent" type="submit" disabled={!reviewServiceReady}>Submit for review →</button>
           </div>
         </div>
       </form>
