@@ -3,6 +3,7 @@ import { env } from 'cloudflare:workers';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { listHomestays } from '../lib/db';
 import { calculateHomestayScore } from '../lib/score';
+import { EXTERNAL_RATING_COVERAGE, getAdditionalScoreSources, getVerifiedExternalRatings } from '../data/externalRatings';
 
 const db = env.DB;
 let homestays: Awaited<ReturnType<typeof listHomestays>> = [];
@@ -16,15 +17,20 @@ try {
 }
 
 const rankedHomestays = homestays
-  .map((stay) => ({
-    ...stay,
-    hScore: calculateHomestayScore({
-      homestayReviewRating: stay.averageRating,
-      homestayReviewCount: stay.reviewCount,
-      googleRating: stay.googleRating,
-      googleReviewCount: stay.googleReviewCount
-    })
-  }))
+  .map((stay) => {
+    const externalRatings = getVerifiedExternalRatings(stay.slug);
+    return {
+      ...stay,
+      externalRatings,
+      hScore: calculateHomestayScore({
+        homestayReviewRating: stay.averageRating,
+        homestayReviewCount: stay.reviewCount,
+        googleRating: stay.googleRating,
+        googleReviewCount: stay.googleReviewCount,
+        additionalSources: getAdditionalScoreSources(stay.slug)
+      })
+    };
+  })
   .sort((a, b) => (b.hScore.score || 0) - (a.hScore.score || 0) || b.hScore.evidenceCount - a.hScore.evidenceCount || a.name.localeCompare(b.name));
 
 const states = [...new Set(rankedHomestays.map((stay) => stay.state))].sort();
@@ -35,11 +41,11 @@ const states = [...new Set(rankedHomestays.map((stay) => stay.state))].sort();
     <section class="hlist-topline">
       <div class="hlist-pitch">
         <h1>Malaysia's homestays. One independent score.</h1>
-        <p>HomestayReview Score blends the review signals we can verify, discounts tiny samples, and never accepts paid placement. Every source remains visible.</p>
+        <p>HomestayReview Score blends the review signals we can verify, discounts tiny samples, and never accepts paid placement. Google, Booking.com and Agoda stay visible as separate sources.</p>
       </div>
       <div class="hlist-proof" aria-label="Directory principles">
         <span class="strong">No paid ranking</span>
-        <span>{rankedHomestays.length} listings</span>
+        <span>{EXTERNAL_RATING_COVERAGE.matchedListings} multi-source matches</span>
         <span>Transparent scoring</span>
       </div>
     </section>
@@ -75,7 +81,7 @@ const states = [...new Set(rankedHomestays.map((stay) => stay.state))].sort();
       <div class="hlist-results">
         <div class="hlist-results-head">
           <p><strong id="resultCount">{rankedHomestays.length}</strong> homestays</p>
-          <span class="hlist-results-note">H-Score = weighted evidence · sources shown separately</span>
+          <span class="hlist-results-note">H-Score = weighted evidence · {EXTERNAL_RATING_COVERAGE.matchedListings}/{EXTERNAL_RATING_COVERAGE.checkedListings} verified on Booking/Agoda</span>
         </div>
 
         {loadError && (
@@ -91,9 +97,11 @@ const states = [...new Set(rankedHomestays.map((stay) => stay.state))].sort();
             const score = stay.hScore.score;
             const summary = stay.latestReview
               ? stay.latestReview
-              : hasGoogle
-                ? `${stay.googleReviewCount.toLocaleString()} Google reviews currently contribute as an external reference. Add a moderated HomestayReview report to strengthen the independent signal.`
-                : 'No verified review signal yet. Be the first guest to add one.';
+              : stay.hScore.sourceCount > 1
+                ? `${stay.hScore.evidenceCount.toLocaleString()} rating signals across ${stay.hScore.sourceCount} verified sources contribute to this H-Score.`
+                : hasGoogle
+                  ? `${stay.googleReviewCount.toLocaleString()} Google reviews currently contribute as an external reference. Add a moderated HomestayReview report to strengthen the independent signal.`
+                  : 'No verified review signal yet. Be the first guest to add one.';
 
             return (
               <a
@@ -124,6 +132,9 @@ const states = [...new Set(rankedHomestays.map((stay) => stay.state))].sort();
                   <div class="hlist-signals">
                     <span class:list={['hlist-signal', `confidence-${stay.hScore.confidence}`]}>{stay.hScore.confidence.toUpperCase()} confidence</span>
                     {hasGoogle && <span class="hlist-signal good">★ Google {stay.googleRating?.toFixed(1)} · {stay.googleReviewCount.toLocaleString()}</span>}
+                    {stay.externalRatings.map((source) => (
+                      <span class="hlist-signal external">{source.platform === 'booking' ? 'Booking' : source.platform === 'agoda' ? 'Agoda' : 'Facebook'} {source.rating.toFixed(1)}/{source.scale} · {source.reviewCount.toLocaleString()}</span>
+                    ))}
                     {hasOwnReviews && <span class="hlist-signal own">✓ HR {stay.averageRating.toFixed(1)} · {stay.reviewCount.toLocaleString()}</span>}
                   </div>
                   <p class="hlist-blurb">{summary}</p>
@@ -156,12 +167,16 @@ const states = [...new Set(rankedHomestays.map((stay) => stay.state))].sort();
         <p>H-Score uses Bayesian shrinkage and review-volume confidence so tiny samples do not automatically dominate the ranking.</p>
       </article>
       <article class="hlist-method-card">
-        <h3>Our reviews get priority</h3>
-        <p>As approved HomestayReview reports accumulate, they receive the strongest base weight. External ratings support the score but do not masquerade as our reviews.</p>
+        <h3>Booking + Agoda are live</h3>
+        <p>We checked all {EXTERNAL_RATING_COVERAGE.checkedListings} current listings and accepted {EXTERNAL_RATING_COVERAGE.matchedListings} confident Booking.com or Agoda matches. Ambiguous matches are omitted instead of guessed.</p>
       </article>
       <article class="hlist-method-card">
-        <h3>More sources, more confidence</h3>
-        <p>The scoring engine is ready for additional verified sources such as Booking, Agoda or Facebook. Each source will remain visible in the breakdown.</p>
+        <h3>Our reviews get priority</h3>
+        <p>Approved HomestayReview reports receive the strongest base weight. Google, Booking.com and Agoda support the score but never masquerade as reviews collected here.</p>
+      </article>
+      <article class="hlist-method-card">
+        <h3>Facebook has a strict bar</h3>
+        <p>Facebook is supported only when we can verify a comparable public numeric score and review count. No Facebook metric in this pass met that verification rule, so none is being scored.</p>
       </article>
       <article class="hlist-method-card">
         <h3>No pay-to-play ranking</h3>
