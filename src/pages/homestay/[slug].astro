@@ -3,6 +3,7 @@ import { env } from 'cloudflare:workers';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getHomestayBySlug } from '../../lib/db';
 import { calculateHomestayScore, extractGuestInsights } from '../../lib/score';
+import { getAdditionalScoreSources, getVerifiedExternalRatings } from '../../data/externalRatings';
 
 const db = env.DB;
 const slug = Astro.params.slug || '';
@@ -16,16 +17,19 @@ try {
 
 if (!stay) Astro.response.status = 404;
 const maxBar = stay ? Math.max(...stay.distribution, 0) : 0;
+const verifiedExternalRatings = stay ? getVerifiedExternalRatings(stay.slug) : [];
 const hScore = stay ? calculateHomestayScore({
   homestayReviewRating: stay.averageRating,
   homestayReviewCount: stay.reviewCount,
   googleRating: stay.googleRating,
-  googleReviewCount: stay.googleReviewCount
+  googleReviewCount: stay.googleReviewCount,
+  additionalSources: getAdditionalScoreSources(stay.slug)
 }) : null;
 const insights = stay ? extractGuestInsights(stay.reviews) : { loves: [], watchouts: [], reviewSampleSize: 0 };
 const googleMapsUrl = stay
   ? stay.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${stay.name} ${stay.city} ${stay.state} Malaysia`)}`
   : null;
+const sourceLabel = (platform: 'booking' | 'agoda' | 'facebook') => platform === 'booking' ? 'Booking.com' : platform === 'agoda' ? 'Agoda' : 'Facebook';
 const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const formatStay = (month: number | null, year: number | null) => {
   if (!year) return 'Date not provided';
@@ -74,6 +78,13 @@ const formatStay = (month: number | null, year: number | null) => {
                 <small>{stay.googleReviewCount.toLocaleString()} reviews</small>
               </div>
             )}
+            {verifiedExternalRatings.map((source) => (
+              <a class="source-strip-item source-strip-external" href={source.url} target="_blank" rel="nofollow noopener">
+                <span>{sourceLabel(source.platform)} verified ↗</span>
+                <strong>{source.rating.toFixed(1)}/{source.scale}</strong>
+                <small>{source.reviewCount.toLocaleString()} reviews · checked {source.checkedAt}</small>
+              </a>
+            ))}
             {stay.reviewCount > 0 && (
               <div class="source-strip-item own-source">
                 <span>HomestayReview</span>
@@ -205,7 +216,7 @@ const formatStay = (month: number | null, year: number | null) => {
             <div class="empty-review-card">
               <span class="review-mark">“</span>
               <h3>No HomestayReview reviews yet.</h3>
-              <p>{stay.googleReviewCount > 0 ? `The Google rating is an external score signal from ${stay.googleReviewCount.toLocaleString()} Google reviews. It contributes to H-Score with sample-size confidence, but we will not invent guest pros or complaints from star ratings alone.` : 'If you stayed here, you can be the first. Your review remains private until email verification and manual approval.'}</p>
+              <p>{hScore && hScore.sourceCount > 1 ? `This H-Score currently combines ${hScore.sourceCount} verified rating sources, including external platforms where matched. Guest themes still stay empty until people submit approved review text directly to HomestayReview.my.` : stay.googleReviewCount > 0 ? `The Google rating is an external score signal from ${stay.googleReviewCount.toLocaleString()} Google reviews. It contributes to H-Score with sample-size confidence, but we will not invent guest pros or complaints from star ratings alone.` : 'If you stayed here, you can be the first. Your review remains private until email verification and manual approval.'}</p>
               <a class="button button-dark button-small" href={`/review/submit?id=${stay.id}&stay=${encodeURIComponent(stay.name)}`}>Write the first review</a>
             </div>
           )}
@@ -224,7 +235,7 @@ const formatStay = (month: number | null, year: number | null) => {
           </div>
           <div class="mini-info">
             <h4>Sources stay visible</h4>
-            <p>Google and future external sources remain clearly labelled. They are never presented as HomestayReview submissions.</p>
+            <p>Google, Booking.com and Agoda remain clearly labelled when verified. Facebook contributes only when a comparable public score and review count can be confirmed.</p>
           </div>
           <div class="mini-info">
             <h4>Negative reviews are allowed</h4>
