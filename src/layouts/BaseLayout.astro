@@ -13,12 +13,11 @@ interface Props {
 }
 
 const {
-  title = 'HomestayReview.my — Independent homestay rankings for Malaysia',
-  description = 'Find Malaysian homestays with a transparent independent score. No paid placement, visible sources and manually moderated HomestayReview reviews.',
+  title = 'HomestayReview.my',
+  description = 'Homestay scores and reviews in Malaysia.',
   wide = false,
   map = false
 } = Astro.props;
-
 const canonical = new URL(Astro.url.pathname, Astro.site || Astro.url.origin).toString();
 ---
 
@@ -38,28 +37,15 @@ const canonical = new URL(Astro.url.pathname, Astro.site || Astro.url.origin).to
   <body>
     <header class="site-header">
       <div class:list={['header-inner', wide && 'header-wide']}>
-        <a class="brand" href="/" aria-label="HomestayReview.my home">
-          <span>homestay</span><b>/</b><span>review</span><small>.my</small>
-        </a>
-        <nav class="header-actions" aria-label="Primary navigation">
-          <a class="text-link hide-mobile" href="/#method">How H-Score works</a>
-          <a class="text-link hide-mobile" href="/review/submit">Add a homestay</a>
-          <a class="button button-dark button-small" href="/review/submit">Write a review</a>
-        </nav>
+        <a class="brand" href="/" aria-label="HomestayReview.my home"><span>homestay</span><b>/</b><span>review</span><small>.my</small></a>
+        <nav class="header-actions" aria-label="Primary navigation"><a class="button button-dark button-small" href="/review/submit">+ Review</a></nav>
       </div>
     </header>
-    <main class:list={['page-shell', wide && 'page-shell-wide']}>
-      <slot />
-    </main>
+    <main class:list={['page-shell', wide && 'page-shell-wide']}><slot /></main>
     <footer class="site-footer">
       <div class:list={['footer-inner', wide && 'header-wide']}>
-        <p><strong>homestay/review.my</strong> · Independent H-Score. No paid placement. Guest reviews are checked before publishing.</p>
-        <div class="footer-links">
-          <a href="/">Browse</a>
-          <a href="/#method">H-Score</a>
-          <a href="/review/submit">Submit review</a>
-          <a href="/admin">Admin</a>
-        </div>
+        <p><strong>homestay/review.my</strong></p>
+        <div class="footer-links"><a href="/">Browse</a><a href="/review/submit">Review</a></div>
       </div>
     </footer>
   </body>
