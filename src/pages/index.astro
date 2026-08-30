@@ -3,7 +3,9 @@ import { env } from 'cloudflare:workers';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { listHomestays } from '../lib/db';
 import { calculateHomestayScore } from '../lib/score';
-import { EXTERNAL_RATING_COVERAGE, getAdditionalScoreSources, getVerifiedExternalRatings } from '../data/externalRatings';
+import { getAdditionalScoreSources } from '../data/externalRatings';
+import { COMMUNITY_LISTINGS } from '../data/communityListings';
+import { getVerifiedSocialMentions } from '../data/socialMentions';
 
 const db = env.DB;
 let homestays: Awaited<ReturnType<typeof listHomestays>> = [];
@@ -16,304 +18,124 @@ try {
   loadError = true;
 }
 
-const rankedHomestays = homestays
-  .map((stay) => {
-    const externalRatings = getVerifiedExternalRatings(stay.slug);
-    return {
-      ...stay,
-      externalRatings,
-      hScore: calculateHomestayScore({
-        homestayReviewRating: stay.averageRating,
-        homestayReviewCount: stay.reviewCount,
-        googleRating: stay.googleRating,
-        googleReviewCount: stay.googleReviewCount,
-        additionalSources: getAdditionalScoreSources(stay.slug)
-      })
-    };
-  })
-  .sort((a, b) => (b.hScore.score || 0) - (a.hScore.score || 0) || b.hScore.evidenceCount - a.hScore.evidenceCount || a.name.localeCompare(b.name));
+const dbItems = homestays.map((stay) => {
+  const hScore = calculateHomestayScore({
+    homestayReviewRating: stay.averageRating,
+    homestayReviewCount: stay.reviewCount,
+    googleRating: stay.googleRating,
+    googleReviewCount: stay.googleReviewCount,
+    additionalSources: getAdditionalScoreSources(stay.slug)
+  });
+  const mentions = getVerifiedSocialMentions(stay.slug);
+  return {
+    name: stay.name,
+    slug: stay.slug,
+    city: stay.city,
+    state: stay.state,
+    score: hScore.score,
+    evidenceCount: hScore.evidenceCount,
+    text: stay.latestReview || mentions[0]?.summary || '',
+    textCount: stay.reviewCount + mentions.length
+  };
+});
 
+const knownSlugs = new Set(dbItems.map((item) => item.slug));
+const communityItems = COMMUNITY_LISTINGS
+  .filter((item) => !knownSlugs.has(item.slug))
+  .map((item) => {
+    const mentions = getVerifiedSocialMentions(item.slug);
+    return {
+      ...item,
+      score: null as number | null,
+      evidenceCount: 0,
+      text: mentions[0]?.summary || '',
+      textCount: mentions.length
+    };
+  });
+
+const rankedHomestays = [...dbItems, ...communityItems]
+  .sort((a, b) => (b.score || 0) - (a.score || 0) || b.evidenceCount - a.evidenceCount || a.name.localeCompare(b.name));
 const states = [...new Set(rankedHomestays.map((stay) => stay.state))].sort();
 ---
 
-<BaseLayout wide map title="HomestayReview.my — Independent Malaysia homestay scores">
+<BaseLayout wide map title="HomestayReview.my">
   <div class="hlist-app">
-    <section class="hlist-topline">
-      <div class="hlist-pitch">
-        <h1>Malaysia's homestays. One independent score.</h1>
-        <p>HomestayReview Score blends the review signals we can verify, discounts tiny samples, and never accepts paid placement. Google, Booking.com and Agoda stay visible as separate sources.</p>
-      </div>
-      <div class="hlist-proof" aria-label="Directory principles">
-        <span class="strong">No paid ranking</span>
-        <span>{EXTERNAL_RATING_COVERAGE.matchedListings} multi-source matches</span>
-        <span>Transparent scoring</span>
-      </div>
+    <section class="hlist-topline compact-topline">
+      <div class="hlist-pitch"><h1>Homestays in Malaysia</h1></div>
     </section>
 
     <section class="hlist-controls" aria-label="Search and filters">
       <label class="hlist-search">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        <input id="searchInput" type="search" placeholder="Search homestay, city or state" autocomplete="off" />
+        <input id="searchInput" type="search" placeholder="Search homestay or place" autocomplete="off" />
       </label>
-
       <select id="stateFilter" class="hlist-control" aria-label="Filter by state">
         <option value="">All Malaysia</option>
         {states.map((state) => <option value={state}>{state}</option>)}
       </select>
-
-      <select id="scoreFilter" class="hlist-control" aria-label="Minimum HomestayReview Score">
-        <option value="0">Any H-Score</option>
-        <option value="90">H-Score 90+</option>
-        <option value="85">H-Score 85+</option>
-        <option value="80">H-Score 80+</option>
+      <select id="scoreFilter" class="hlist-control" aria-label="Minimum score">
+        <option value="0">Any score</option><option value="90">90+</option><option value="85">85+</option><option value="80">80+</option>
       </select>
-
       <select id="sortFilter" class="hlist-control" aria-label="Sort results">
-        <option value="score">Best H-Score</option>
-        <option value="evidence">Most evidence</option>
-        <option value="name">A to Z</option>
+        <option value="score">Best score</option><option value="reviews">Most reviews</option><option value="name">A to Z</option>
       </select>
-
-      <a class="hlist-review-cta" href="/review/submit">+ Write a review</a>
+      <a class="hlist-review-cta" href="/review/submit">+ Review</a>
     </section>
 
     <section class="hlist-main">
       <div class="hlist-results">
-        <div class="hlist-results-head">
-          <p><strong id="resultCount">{rankedHomestays.length}</strong> homestays</p>
-          <span class="hlist-results-note">H-Score = weighted evidence · {EXTERNAL_RATING_COVERAGE.matchedListings}/{EXTERNAL_RATING_COVERAGE.checkedListings} verified on Booking/Agoda</span>
-        </div>
-
-        {loadError && (
-          <div class="hlist-load-error">
-            <strong>Directory temporarily unavailable.</strong> The database could not be loaded.
-          </div>
-        )}
+        <div class="hlist-results-head"><p><strong id="resultCount">{rankedHomestays.length}</strong> homestays</p></div>
+        {loadError && <div class="hlist-load-error"><strong>Could not load listings.</strong></div>}
 
         <div id="listingFeed" class="hlist-list">
-          {rankedHomestays.map((stay, index) => {
-            const hasOwnReviews = stay.reviewCount > 0;
-            const hasGoogle = stay.googleRating !== null && stay.googleReviewCount > 0;
-            const score = stay.hScore.score;
-            const summary = stay.latestReview
-              ? stay.latestReview
-              : stay.hScore.sourceCount > 1
-                ? `${stay.hScore.evidenceCount.toLocaleString()} rating signals across ${stay.hScore.sourceCount} verified sources contribute to this H-Score.`
-                : hasGoogle
-                  ? `${stay.googleReviewCount.toLocaleString()} Google reviews currently contribute as an external reference. Add a moderated HomestayReview report to strengthen the independent signal.`
-                  : 'No verified review signal yet. Be the first guest to add one.';
-
-            return (
-              <a
-                class="hlist-card"
-                href={`/homestay/${stay.slug}`}
-                data-slug={stay.slug}
-                data-name={stay.name.toLowerCase()}
-                data-display-name={stay.name}
-                data-city={stay.city.toLowerCase()}
-                data-city-display={stay.city}
-                data-state={stay.state}
-                data-score={score || 0}
-                data-evidence={stay.hScore.evidenceCount}
-                data-source={hasOwnReviews ? 'own' : hasGoogle ? 'google' : 'none'}
-              >
-                <div class:list={['hlist-score', !hasOwnReviews && hasGoogle && 'is-google']}>
-                  <strong>{score ?? '—'}</strong>
-                  <small>H-SCORE</small>
-                  <i aria-hidden="true"></i>
+          {rankedHomestays.map((stay, index) => (
+            <a class="hlist-card lean-card" href={`/homestay/${stay.slug}`}
+              data-slug={stay.slug} data-name={stay.name.toLowerCase()} data-display-name={stay.name}
+              data-city={stay.city.toLowerCase()} data-city-display={stay.city} data-state={stay.state}
+              data-score={stay.score || 0} data-evidence={stay.evidenceCount}>
+              <div class="hlist-score"><strong>{stay.score ?? '—'}</strong><small>SCORE</small></div>
+              <div class="hlist-card-copy">
+                <div class="hlist-card-top">
+                  <span class="hlist-location">{stay.city} · {stay.state}</span>
+                  {stay.score !== null && <span class="hlist-rank">#{String(index + 1).padStart(2, '0')}</span>}
                 </div>
-
-                <div class="hlist-card-copy">
-                  <div class="hlist-card-top">
-                    <span class="hlist-location">{stay.city} · {stay.state}</span>
-                    <span class="hlist-rank">#{String(index + 1).padStart(2, '0')}</span>
-                  </div>
-                  <h2>{stay.name}</h2>
-                  <div class="hlist-signals">
-                    <span class:list={['hlist-signal', `confidence-${stay.hScore.confidence}`]}>{stay.hScore.confidence.toUpperCase()} confidence</span>
-                    {hasGoogle && <span class="hlist-signal good">★ Google {stay.googleRating?.toFixed(1)} · {stay.googleReviewCount.toLocaleString()}</span>}
-                    {stay.externalRatings.map((source) => (
-                      <span class="hlist-signal external">{source.platform === 'booking' ? 'Booking' : source.platform === 'agoda' ? 'Agoda' : 'Facebook'} {source.rating.toFixed(1)}/{source.scale} · {source.reviewCount.toLocaleString()}</span>
-                    ))}
-                    {hasOwnReviews && <span class="hlist-signal own">✓ HR {stay.averageRating.toFixed(1)} · {stay.reviewCount.toLocaleString()}</span>}
-                  </div>
-                  <p class="hlist-blurb">{summary}</p>
+                <h2>{stay.name}</h2>
+                <div class="lean-meta">
+                  {stay.evidenceCount > 0 && <strong>{stay.evidenceCount.toLocaleString()} reviews</strong>}
+                  {stay.evidenceCount === 0 && stay.textCount > 0 && <strong>{stay.textCount} mention{stay.textCount === 1 ? '' : 's'}</strong>}
                 </div>
-
-                <span class="hlist-arrow" aria-hidden="true">›</span>
-              </a>
-            );
-          })}
+                {stay.text && <p class="hlist-blurb lean-review">“{stay.text}”</p>}
+              </div>
+              <span class="hlist-arrow" aria-hidden="true">›</span>
+            </a>
+          ))}
         </div>
 
-        <div id="emptyState" class="hlist-empty" hidden>
-          <strong>No matching homestays.</strong>
-          Try another location or score filter.
-        </div>
+        <div id="emptyState" class="hlist-empty" hidden><strong>No matching homestays.</strong></div>
       </div>
-
-      <div class="hlist-map-wrap">
-        <div id="homestayMap" aria-label="Approximate map of homestay results"></div>
-        <div class="hlist-map-note">Pins show approximate state areas until exact property coordinates are verified.</div>
-        <div class="hlist-map-legend"><b>Number</b> = HomestayReview Score · click a pin to inspect the listing</div>
-      </div>
+      <div class="hlist-map-wrap"><div id="homestayMap" aria-label="Map of homestay results"></div></div>
     </section>
   </div>
-
-  <section id="method" class="hlist-method">
-    <div class="hlist-method-grid">
-      <article class="hlist-method-card lead">
-        <h3>A 5.0 with 8 reviews is not a 5.0 with 800.</h3>
-        <p>H-Score uses Bayesian shrinkage and review-volume confidence so tiny samples do not automatically dominate the ranking.</p>
-      </article>
-      <article class="hlist-method-card">
-        <h3>Booking + Agoda are live</h3>
-        <p>We checked all {EXTERNAL_RATING_COVERAGE.checkedListings} current listings and accepted {EXTERNAL_RATING_COVERAGE.matchedListings} confident Booking.com or Agoda matches. Ambiguous matches are omitted instead of guessed.</p>
-      </article>
-      <article class="hlist-method-card">
-        <h3>Our reviews get priority</h3>
-        <p>Approved HomestayReview reports receive the strongest base weight. Google, Booking.com and Agoda support the score but never masquerade as reviews collected here.</p>
-      </article>
-      <article class="hlist-method-card">
-        <h3>Facebook has a strict bar</h3>
-        <p>Facebook is supported only when we can verify a comparable public numeric score and review count. No Facebook metric in this pass met that verification rule, so none is being scored.</p>
-      </article>
-      <article class="hlist-method-card">
-        <h3>No pay-to-play ranking</h3>
-        <p>Homestays cannot buy a higher H-Score. The score is calculated from review evidence and sample confidence, not commercial placement.</p>
-      </article>
-    </div>
-  </section>
 
   <script is:inline src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script is:inline>
     (() => {
-      const searchInput = document.querySelector('#searchInput');
-      const stateFilter = document.querySelector('#stateFilter');
-      const scoreFilter = document.querySelector('#scoreFilter');
-      const sortFilter = document.querySelector('#sortFilter');
-      const feed = document.querySelector('#listingFeed');
-      const count = document.querySelector('#resultCount');
-      const empty = document.querySelector('#emptyState');
-      const cards = Array.from(document.querySelectorAll('.hlist-card'));
-
-      const stateCenters = {
-        'Johor': [1.74, 103.55], 'Kedah': [6.12, 100.37], 'Kelantan': [5.95, 102.20], 'Melaka': [2.20, 102.25],
-        'Negeri Sembilan': [2.73, 101.94], 'Pahang': [3.81, 103.33], 'Penang': [5.41, 100.33], 'Perak': [4.60, 101.09],
-        'Perlis': [6.44, 100.20], 'Sabah': [5.98, 116.07], 'Sarawak': [1.55, 110.36], 'Selangor': [3.07, 101.52],
-        'Terengganu': [5.31, 103.13], 'Kuala Lumpur': [3.14, 101.69], 'Putrajaya': [2.93, 101.70], 'Labuan': [5.28, 115.23]
-      };
-
-      const hash = (value) => {
-        let h = 0;
-        for (let i = 0; i < value.length; i++) h = ((h << 5) - h + value.charCodeAt(i)) | 0;
-        return Math.abs(h);
-      };
-
-      const approxCoords = (card) => {
-        const center = stateCenters[card.dataset.state] || [4.25, 102.0];
-        const h = hash(card.dataset.slug || card.dataset.name || 'stay');
-        const angle = ((h % 360) * Math.PI) / 180;
-        const broad = ['Sabah', 'Sarawak', 'Pahang'].includes(card.dataset.state);
-        const radius = (broad ? 0.12 : 0.045) + ((h % 100) / 100) * (broad ? 0.32 : 0.14);
-        return [center[0] + Math.sin(angle) * radius, center[1] + Math.cos(angle) * radius];
-      };
-
-      let map = null;
-      const markerBySlug = new Map();
-      const visibleLayer = window.L ? window.L.layerGroup() : null;
-
-      if (window.L) {
-        map = window.L.map('homestayMap', { zoomControl: true, attributionControl: true, minZoom: 3 }).setView([4.2, 109.2], 5);
-        window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          maxZoom: 18,
-          attribution: '&copy; OpenStreetMap contributors'
-        }).addTo(map);
-        visibleLayer.addTo(map);
-
-        cards.forEach((card) => {
-          const coords = approxCoords(card);
-          const score = Number(card.dataset.score || 0);
-          const own = card.dataset.source === 'own';
-          const markerHtml = `<div class="hlist-map-marker ${own ? 'own' : ''}">${score || '—'}</div>`;
-          const icon = window.L.divIcon({ className: 'hlist-div-icon', html: markerHtml, iconSize: [42, 28], iconAnchor: [21, 14] });
-          const marker = window.L.marker(coords, { icon });
-          marker.bindPopup(`<div class="hlist-popup"><strong>${card.dataset.displayName || ''}</strong><span>${card.dataset.cityDisplay || ''} · ${card.dataset.state || ''}</span><span><b>H-Score ${score || 'Unrated'}</b> · ${Number(card.dataset.evidence || 0).toLocaleString()} review signals</span></div>`);
-          marker.on('click', () => {
-            cards.forEach((item) => item.classList.remove('is-active'));
-            card.classList.add('is-active');
-            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          });
-          markerBySlug.set(card.dataset.slug, marker);
-        });
-      }
-
-      const setMarkerActive = (card, active) => {
-        const marker = markerBySlug.get(card.dataset.slug);
-        if (!marker) return;
-        const badge = marker.getElement()?.querySelector('.hlist-map-marker');
-        badge?.classList.toggle('active', active);
-      };
-
-      cards.forEach((card) => {
-        card.addEventListener('mouseenter', () => setMarkerActive(card, true));
-        card.addEventListener('mouseleave', () => setMarkerActive(card, false));
-      });
-
-      const updateMap = (visibleCards, fit = false) => {
-        if (!map || !visibleLayer) return;
-        visibleLayer.clearLayers();
-        const points = [];
-        visibleCards.forEach((card) => {
-          const marker = markerBySlug.get(card.dataset.slug);
-          if (!marker) return;
-          visibleLayer.addLayer(marker);
-          points.push(marker.getLatLng());
-        });
-        if (fit && points.length) {
-          if (points.length === 1) map.setView(points[0], 9);
-          else map.fitBounds(window.L.latLngBounds(points).pad(.18), { maxZoom: 9 });
-        }
-      };
-
-      const applyFilters = (fitMap = false) => {
-        const query = (searchInput?.value || '').trim().toLowerCase();
-        const state = stateFilter?.value || '';
-        const minScore = Number(scoreFilter?.value || 0);
-        const sort = sortFilter?.value || 'score';
-
-        const visible = cards.filter((card) => {
-          const haystack = `${card.dataset.name || ''} ${card.dataset.city || ''} ${card.dataset.state || ''}`.toLowerCase();
-          const score = Number(card.dataset.score || 0);
-          return (!query || haystack.includes(query)) && (!state || card.dataset.state === state) && (!minScore || score >= minScore);
-        });
-
-        cards.forEach((card) => { card.hidden = true; });
-        visible.sort((a, b) => {
-          if (sort === 'evidence') return Number(b.dataset.evidence || 0) - Number(a.dataset.evidence || 0) || Number(b.dataset.score || 0) - Number(a.dataset.score || 0);
-          if (sort === 'name') return (a.dataset.name || '').localeCompare(b.dataset.name || '');
-          return Number(b.dataset.score || 0) - Number(a.dataset.score || 0) || Number(b.dataset.evidence || 0) - Number(a.dataset.evidence || 0);
-        });
-        visible.forEach((card) => {
-          card.hidden = false;
-          feed?.appendChild(card);
-        });
-
-        if (count) count.textContent = String(visible.length);
-        if (empty) empty.hidden = visible.length !== 0;
-        updateMap(visible, fitMap);
-      };
-
-      const initialState = new URLSearchParams(window.location.search).get('state');
-      if (initialState && stateFilter) stateFilter.value = initialState;
-
-      searchInput?.addEventListener('input', () => applyFilters(false));
-      stateFilter?.addEventListener('change', () => applyFilters(true));
-      scoreFilter?.addEventListener('change', () => applyFilters(true));
-      sortFilter?.addEventListener('change', () => applyFilters(false));
-
-      applyFilters(Boolean(initialState));
-      setTimeout(() => map?.invalidateSize(), 250);
+      const searchInput=document.querySelector('#searchInput');
+      const stateFilter=document.querySelector('#stateFilter');
+      const scoreFilter=document.querySelector('#scoreFilter');
+      const sortFilter=document.querySelector('#sortFilter');
+      const feed=document.querySelector('#listingFeed');
+      const count=document.querySelector('#resultCount');
+      const empty=document.querySelector('#emptyState');
+      const cards=Array.from(document.querySelectorAll('.hlist-card'));
+      const centers={'Johor':[1.74,103.55],'Kedah':[6.12,100.37],'Kelantan':[5.95,102.20],'Melaka':[2.20,102.25],'Negeri Sembilan':[2.73,101.94],'Pahang':[3.81,103.33],'Penang':[5.41,100.33],'Perak':[4.60,101.09],'Perlis':[6.44,100.20],'Sabah':[5.98,116.07],'Sarawak':[1.55,110.36],'Selangor':[3.07,101.52],'Terengganu':[5.31,103.13],'Kuala Lumpur':[3.14,101.69],'Putrajaya':[2.93,101.70],'Labuan':[5.28,115.23]};
+      const hash=(v)=>{let h=0;for(let i=0;i<v.length;i++)h=((h<<5)-h+v.charCodeAt(i))|0;return Math.abs(h)};
+      const coords=(card)=>{const c=centers[card.dataset.state]||[4.25,102];const h=hash(card.dataset.slug||'stay');const a=((h%360)*Math.PI)/180;const r=.05+((h%100)/100)*.12;return[c[0]+Math.sin(a)*r,c[1]+Math.cos(a)*r]};
+      let map=null;const markers=new Map();const layer=window.L?window.L.layerGroup():null;
+      if(window.L){map=window.L.map('homestayMap',{zoomControl:true,minZoom:3}).setView([4.2,109.2],5);window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; OpenStreetMap'}).addTo(map);layer.addTo(map);cards.forEach((card)=>{const score=Number(card.dataset.score||0);const icon=window.L.divIcon({className:'hlist-div-icon',html:`<div class="hlist-map-marker">${score||'•'}</div>`,iconSize:[42,28],iconAnchor:[21,14]});const marker=window.L.marker(coords(card),{icon});marker.bindPopup(`<div class="hlist-popup"><strong>${card.dataset.displayName||''}</strong><span>${card.dataset.cityDisplay||''}</span></div>`);markers.set(card.dataset.slug,marker)})}
+      const updateMap=(visible)=>{if(!map||!layer)return;layer.clearLayers();visible.forEach((card)=>{const marker=markers.get(card.dataset.slug);if(marker)layer.addLayer(marker)})};
+      const apply=()=>{const q=(searchInput?.value||'').trim().toLowerCase();const state=stateFilter?.value||'';const min=Number(scoreFilter?.value||0);const sort=sortFilter?.value||'score';const visible=cards.filter((card)=>{const hay=`${card.dataset.name||''} ${card.dataset.city||''} ${card.dataset.state||''}`.toLowerCase();const score=Number(card.dataset.score||0);return(!q||hay.includes(q))&&(!state||card.dataset.state===state)&&(!min||score>=min)});cards.forEach((card)=>card.hidden=!visible.includes(card));visible.sort((a,b)=>sort==='name'?(a.dataset.displayName||'').localeCompare(b.dataset.displayName||''):sort==='reviews'?Number(b.dataset.evidence||0)-Number(a.dataset.evidence||0):Number(b.dataset.score||0)-Number(a.dataset.score||0));visible.forEach((card)=>feed?.appendChild(card));if(count)count.textContent=String(visible.length);if(empty)empty.hidden=visible.length!==0;updateMap(visible)};
+      [searchInput,stateFilter,scoreFilter,sortFilter].forEach((el)=>el?.addEventListener(el===searchInput?'input':'change',apply));apply();
     })();
   </script>
 </BaseLayout>
