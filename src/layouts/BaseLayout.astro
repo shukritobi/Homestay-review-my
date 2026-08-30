@@ -1,17 +1,20 @@
 ---
 import '../styles/global.css';
 import '../styles/production.css';
+import '../styles/hotelist.css';
 
 interface Props {
   title?: string;
   description?: string;
   wide?: boolean;
+  map?: boolean;
 }
 
 const {
-  title = 'HomestayReview.my — Real reviews for Malaysian homestays',
-  description = 'Read and share manually moderated reviews of homestays across Malaysia.',
-  wide = false
+  title = 'HomestayReview.my — Independent homestay rankings for Malaysia',
+  description = 'Find Malaysian homestays without paid ranking noise. Google scores are clearly labelled as external references and HomestayReview reviews are manually moderated.',
+  wide = false,
+  map = false
 } = Astro.props;
 
 const canonical = new URL(Astro.url.pathname, Astro.site || Astro.url.origin).toString();
@@ -23,10 +26,11 @@ const canonical = new URL(Astro.url.pathname, Astro.site || Astro.url.origin).to
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width" />
     <meta name="description" content={description} />
-    <meta name="theme-color" content="#f4f0e7" />
+    <meta name="theme-color" content="#f2f2ee" />
     <meta name="robots" content="index,follow,max-image-preview:large" />
     <link rel="canonical" href={canonical} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    {map && <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />}
     <title>{title}</title>
   </head>
   <body>
@@ -36,6 +40,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site || Astro.url.origin).to
           <span>homestay</span><b>/</b><span>review</span><small>.my</small>
         </a>
         <nav class="header-actions" aria-label="Primary navigation">
+          <a class="text-link hide-mobile" href="/#method">How ranking works</a>
           <a class="text-link hide-mobile" href="/review/submit">Add a homestay</a>
           <a class="button button-dark button-small" href="/review/submit">Write a review</a>
         </nav>
@@ -46,9 +51,10 @@ const canonical = new URL(Astro.url.pathname, Astro.site || Astro.url.origin).to
     </main>
     <footer class="site-footer">
       <div class:list={['footer-inner', wide && 'header-wide']}>
-        <p><strong>homestay/review.my</strong> · Reviews are submitted by guests and checked before publishing.</p>
+        <p><strong>homestay/review.my</strong> · No paid placement. Guest reviews are checked before publishing.</p>
         <div class="footer-links">
           <a href="/">Browse</a>
+          <a href="/#method">Ranking</a>
           <a href="/review/submit">Submit review</a>
           <a href="/admin">Admin</a>
         </div>
