@@ -134,6 +134,80 @@
 .guest-theme strong { font-size: 12px; }
 .guest-theme span { color: var(--muted); font-size: 9px; text-align: right; }
 
+.social-chatter-section { padding: 26px 0 2px; }
+.social-chatter-card {
+  border: 1px solid var(--line);
+  background: #fff;
+  padding: 18px;
+}
+.social-mention-list { display: grid; gap: 8px; }
+.social-mention {
+  display: block;
+  padding: 14px;
+  border: 1px solid var(--line);
+  background: #fafaf7;
+  color: inherit;
+  text-decoration: none;
+}
+.social-mention:hover { border-color: var(--ink); }
+.social-mention-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+.social-mention-top strong { font-size: 11px; }
+.social-sentiment {
+  padding: 4px 6px;
+  border-radius: 4px;
+  background: #ecece8;
+  color: #555;
+  font-size: 8px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.social-positive { background: #dff3e7; color: #1d6a42; }
+.social-negative { background: #ffe4de; color: #9a382b; }
+.social-mixed { background: #f3e8c7; color: #79601b; }
+.social-mention p,
+.social-empty {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.55;
+}
+.social-mention small {
+  display: block;
+  margin-top: 9px;
+  color: #8a8c84;
+  font-size: 9px;
+}
+.social-search-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 14px;
+}
+.social-search-actions a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  background: #f7f7f3;
+  font-size: 10px;
+  font-weight: 850;
+}
+.social-search-actions a:hover { border-color: var(--ink); }
+.social-disclaimer {
+  display: block;
+  margin-top: 12px;
+  color: #8a8c84;
+  font-size: 9px;
+  line-height: 1.45;
+}
+
 .hlist-signal.confidence-high { background: #c8ff2e; color: #111; border-color: #c8ff2e; }
 .hlist-signal.confidence-medium { background: #f2de75; color: #111; border-color: #f2de75; }
 .hlist-signal.confidence-low { background: #eee; color: #444; }
@@ -145,4 +219,5 @@
   .source-strip-link { min-height: 48px; }
   .hscore-panel { margin-top: 6px; }
   .guest-theme { align-items: flex-start; }
+  .social-chatter-card { padding: 14px; }
 }
