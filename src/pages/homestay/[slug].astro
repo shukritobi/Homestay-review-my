@@ -2,25 +2,28 @@
 import { env } from 'cloudflare:workers';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getHomestayBySlug } from '../../lib/db';
-import { calculateHomestayScore, extractGuestInsights } from '../../lib/score';
-import { getAdditionalScoreSources, getVerifiedExternalRatings } from '../../data/externalRatings';
-import { getVerifiedSocialMentions, socialSearchUrls } from '../../data/socialMentions';
+import { calculateHomestayScore } from '../../lib/score';
+import { getAdditionalScoreSources } from '../../data/externalRatings';
+import { getCommunityListing } from '../../data/communityListings';
+import { getVerifiedSocialMentions } from '../../data/socialMentions';
 
 const db = env.DB;
 const slug = Astro.params.slug || '';
 let stay: Awaited<ReturnType<typeof getHomestayBySlug>> = null;
-
 try {
   stay = db ? await getHomestayBySlug(db, slug) : null;
 } catch (error) {
   console.error('Homestay detail query failed', error);
 }
 
-if (!stay) Astro.response.status = 404;
-const maxBar = stay ? Math.max(...stay.distribution, 0) : 0;
-const verifiedExternalRatings = stay ? getVerifiedExternalRatings(stay.slug) : [];
-const socialMentions = stay ? getVerifiedSocialMentions(stay.slug) : [];
-const socialSearch = stay ? socialSearchUrls(stay.name) : null;
+const community = getCommunityListing(slug);
+const exists = Boolean(stay || community);
+if (!exists) Astro.response.status = 404;
+
+const name = stay?.name || community?.name || '';
+const city = stay?.city || community?.city || '';
+const state = stay?.state || community?.state || '';
+const mentions = exists ? getVerifiedSocialMentions(slug) : [];
 const hScore = stay ? calculateHomestayScore({
   homestayReviewRating: stay.averageRating,
   homestayReviewCount: stay.reviewCount,
@@ -28,305 +31,78 @@ const hScore = stay ? calculateHomestayScore({
   googleReviewCount: stay.googleReviewCount,
   additionalSources: getAdditionalScoreSources(stay.slug)
 }) : null;
-const insights = stay ? extractGuestInsights(stay.reviews) : { loves: [], watchouts: [], reviewSampleSize: 0 };
-const googleMapsUrl = stay
-  ? stay.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${stay.name} ${stay.city} ${stay.state} Malaysia`)}`
-  : null;
-const sourceLabel = (platform: 'booking' | 'agoda' | 'facebook') => platform === 'booking' ? 'Booking.com' : platform === 'agoda' ? 'Agoda' : 'Facebook';
-const socialLabel = (platform: 'threads' | 'x') => platform === 'threads' ? 'Threads' : 'X / Twitter';
-const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const evidenceCount = hScore?.evidenceCount || 0;
+const ownReviews = stay?.reviews || [];
+const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const formatStay = (month: number | null, year: number | null) => {
-  if (!year) return 'Date not provided';
-  if (!month || month < 1 || month > 12) return String(year);
-  return `${monthNames[month - 1]} ${year}`;
+  if (!year) return '';
+  return month && month >= 1 && month <= 12 ? `${monthNames[month - 1]} ${year}` : String(year);
 };
+const formatDate = (value: string | null) => value ? new Intl.DateTimeFormat('en-MY',{day:'numeric',month:'short',year:'numeric'}).format(new Date(`${value}T00:00:00Z`)) : '';
 ---
 
-<BaseLayout title={stay ? `${stay.name} score & reviews | HomestayReview.my` : 'Homestay not found | HomestayReview.my'} description={stay ? `See the independent HomestayReview Score, source breakdown and manually moderated guest reviews for ${stay.name} in ${stay.city}, ${stay.state}.` : 'This homestay listing could not be found.'}>
-  {!stay ? (
+<BaseLayout title={exists ? `${name} | HomestayReview.my` : 'Not found | HomestayReview.my'}>
+  {!exists ? (
     <section class="form-shell verification-shell">
       <div class="form-card verification-card">
-        <p class="eyebrow">404</p>
-        <div class="big-check neutral-check">?</div>
         <h1>Homestay not found.</h1>
-        <p>The listing may still be awaiting moderation, may have moved, or may not exist yet.</p>
-        <div class="verification-actions">
-          <a class="button button-dark" href="/">Browse directory</a>
-          <a class="button button-light" href="/review/submit">Add a homestay</a>
-        </div>
+        <a class="button button-dark" href="/">Back</a>
       </div>
     </section>
   ) : (
-    <>
-      <div class="detail-crumbs">
-        <a href="/">Malaysia</a> &nbsp;/&nbsp; <a href={`/?state=${encodeURIComponent(stay.state)}`}>{stay.state}</a> &nbsp;/&nbsp; {stay.name}
+    <section class="lean-detail">
+      <a class="lean-back" href="/">← All homestays</a>
+
+      <div class="lean-detail-head">
+        <div>
+          <p class="lean-location">{city} · {state}</p>
+          <h1>{name}</h1>
+        </div>
+        <div class="lean-big-score">
+          <strong>{hScore?.score ?? '—'}</strong>
+          <span>score</span>
+        </div>
       </div>
 
-      <section class="detail-hero">
-        <div class="detail-title">
-          <p class="eyebrow">{stay.city} · {stay.state}</p>
-          <h1>{stay.name}</h1>
-          <p class="location">Independent homestay review profile</p>
-          {stay.address && <p class="detail-summary">{stay.address}</p>}
-          {stay.tags.length > 0 && (
-            <div class="tags" style="margin-top:18px">
-              {stay.tags.map((tag) => <span class="tag">{tag}</span>)}
+      <div class="lean-count-row">
+        {evidenceCount > 0 && <strong>{evidenceCount.toLocaleString()} reviews</strong>}
+        {evidenceCount === 0 && mentions.length > 0 && <strong>{mentions.length} mention{mentions.length === 1 ? '' : 's'}</strong>}
+        <a href={`/review/submit${stay ? `?id=${stay.id}&stay=${encodeURIComponent(name)}` : `?stay=${encodeURIComponent(name)}`}`}>+ Write a review</a>
+      </div>
+
+      <div class="lean-review-list">
+        {ownReviews.map((review) => (
+          <article class="lean-review-card">
+            <div class="lean-review-head">
+              <div class="stars" aria-label={`${review.rating} out of 5`}>{'★'.repeat(review.rating)}{'☆'.repeat(5-review.rating)}</div>
+              <span>{formatStay(review.stayMonth, review.stayYear)}</span>
             </div>
-          )}
-
-          <div class="source-strip">
-            {stay.googleRating !== null && stay.googleReviewCount > 0 && (
-              <div class="source-strip-item">
-                <span>Google reference</span>
-                <strong>{stay.googleRating.toFixed(1)} ★</strong>
-                <small>{stay.googleReviewCount.toLocaleString()} reviews</small>
-              </div>
-            )}
-            {verifiedExternalRatings.map((source) => (
-              <a class="source-strip-item source-strip-external" href={source.url} target="_blank" rel="nofollow noopener">
-                <span>{sourceLabel(source.platform)} verified ↗</span>
-                <strong>{source.rating.toFixed(1)}/{source.scale}</strong>
-                <small>{source.reviewCount.toLocaleString()} reviews · checked {source.checkedAt}</small>
-              </a>
-            ))}
-            {stay.reviewCount > 0 && (
-              <div class="source-strip-item own-source">
-                <span>HomestayReview</span>
-                <strong>{stay.averageRating.toFixed(1)} ★</strong>
-                <small>{stay.reviewCount.toLocaleString()} approved {stay.reviewCount === 1 ? 'review' : 'reviews'}</small>
-              </div>
-            )}
-            {googleMapsUrl && <a class="source-strip-link" href={googleMapsUrl} target="_blank" rel="nofollow noopener">Google Maps ↗</a>}
-          </div>
-
-          {stay.sourceName && (
-            <p class="listing-source">Listing information: {stay.sourceUrl ? <a href={stay.sourceUrl} rel="nofollow">{stay.sourceName}</a> : stay.sourceName}{stay.googleDataCheckedAt ? ` · checked ${stay.googleDataCheckedAt}` : ''}</p>
-          )}
-        </div>
-
-        <div class="hscore-panel" aria-label={hScore?.score ? `HomestayReview Score ${hScore.score} out of 100 with ${hScore.confidence} confidence` : 'No HomestayReview Score yet'}>
-          <div class="hscore-kicker">HOMESTAYREVIEW SCORE</div>
-          <div class="hscore-number-row">
-            <strong>{hScore?.score ?? '—'}</strong>
-            <span>/100</span>
-          </div>
-          <div class:list={['hscore-confidence', `confidence-${hScore?.confidence || 'none'}`]}>{(hScore?.confidence || 'none').toUpperCase()} CONFIDENCE</div>
-          <p>{hScore?.score ? `${hScore.evidenceCount.toLocaleString()} review signals across ${hScore.sourceCount} verified ${hScore.sourceCount === 1 ? 'source' : 'sources'}.` : 'Not enough verified rating evidence yet.'}</p>
-          {hScore?.breakdown.length ? (
-            <div class="hscore-breakdown">
-              {hScore.breakdown.map((source) => (
-                <div class="hscore-source-row">
-                  <div>
-                    <b>{source.label}</b>
-                    <span>{source.reviewCount.toLocaleString()} reviews · {Math.round(source.confidence * 100)}% source confidence</span>
-                  </div>
-                  <strong>{Math.round(source.normalizedScore)}</strong>
-                </div>
-              ))}
-            </div>
-          ) : null}
-          <a class="hscore-method-link" href="/#method">How H-Score works →</a>
-        </div>
-      </section>
-
-      <section class="guest-signal-section">
-        <div class="section-title">
-          <h2>What guests keep mentioning</h2>
-          <span>{insights.reviewSampleSize ? `${insights.reviewSampleSize} approved HR reviews analysed` : 'Waiting for approved review text'}</span>
-        </div>
-
-        <div class="guest-signal-grid">
-          <article class="guest-signal-card love-card">
-            <div class="guest-signal-heading"><span>+</span><h3>Guests love</h3></div>
-            {insights.loves.length ? (
-              <div class="guest-theme-list">
-                {insights.loves.map((item) => (
-                  <div class="guest-theme"><strong>{item.label}</strong><span>{item.mentions} {item.mentions === 1 ? 'mention' : 'mentions'} · {item.evidence} evidence</span></div>
-                ))}
-              </div>
-            ) : (
-              <p>Not enough approved HomestayReview text yet. We do not manufacture positive themes from external star ratings.</p>
-            )}
+            <h2>{review.title}</h2>
+            <p>“{review.body}”</p>
+            <div class="lean-review-author"><strong>{review.author}</strong><span>Verified review</span></div>
           </article>
+        ))}
 
-          <article class="guest-signal-card watch-card">
-            <div class="guest-signal-heading"><span>!</span><h3>Watch out for</h3></div>
-            {insights.watchouts.length ? (
-              <div class="guest-theme-list">
-                {insights.watchouts.map((item) => (
-                  <div class="guest-theme"><strong>{item.label}</strong><span>{item.mentions} {item.mentions === 1 ? 'mention' : 'mentions'} · {item.evidence} evidence</span></div>
-                ))}
-              </div>
-            ) : (
-              <p>No recurring negative theme has enough approved HomestayReview evidence yet.</p>
-            )}
+        {mentions.map((mention) => (
+          <article class="lean-review-card community-card">
+            <div class="lean-review-head">
+              <span>Community mention</span>
+              <span>{formatDate(mention.postedAt)}</span>
+            </div>
+            <p>“{mention.summary}”</p>
+            <div class="lean-review-author">
+              <a href={mention.profileUrl} target="_blank" rel="nofollow noopener"><strong>@{mention.author}</strong></a>
+            </div>
           </article>
-        </div>
-      </section>
+        ))}
 
-      <section class="social-chatter-section">
-        <div class="section-title">
-          <h2>Threads & X chatter</h2>
-          <span>{socialMentions.length ? `${socialMentions.length} exact public ${socialMentions.length === 1 ? 'mention' : 'mentions'} matched` : 'No exact public mention verified yet'}</span>
-        </div>
-
-        <div class="social-chatter-card">
-          {socialMentions.length ? (
-            <div class="social-mention-list">
-              {socialMentions.map((mention) => (
-                <a class="social-mention" href={mention.url} target="_blank" rel="nofollow noopener">
-                  <div class="social-mention-top">
-                    <strong>{socialLabel(mention.platform)}</strong>
-                    <span class:list={['social-sentiment', `social-${mention.sentiment}`]}>{mention.sentiment}</span>
-                  </div>
-                  <p>{mention.summary}</p>
-                  <small>{mention.author}{mention.postedAt ? ` · ${mention.postedAt}` : ''} · original post ↗</small>
-                </a>
-              ))}
-            </div>
-          ) : (
-            <p class="social-empty">We checked public indexing for this property but did not find an exact Threads/X post we could confidently treat as property-specific guest chatter. We do not import vague posts about the surrounding condo, city or development.</p>
-          )}
-
-          {socialSearch && (
-            <div class="social-search-actions">
-              <a href={socialSearch.threads} target="_blank" rel="nofollow noopener">Search Threads ↗</a>
-              <a href={socialSearch.x} target="_blank" rel="nofollow noopener">Search X ↗</a>
-            </div>
-          )}
-          <small class="social-disclaimer">Public social mentions are not verified stays and never affect H-Score. Summaries are paraphrased rather than copied verbatim.</small>
-        </div>
-      </section>
-
-      <section class="detail-layout">
-        <div>
-          <div class="section-title">
-            <h2>HomestayReview reviews</h2>
-            <span>{stay.reviewCount ? 'Newest first' : 'Waiting for the first review'}</span>
+        {ownReviews.length === 0 && mentions.length === 0 && (
+          <div class="lean-no-review">
+            <strong>No written reviews yet.</strong>
+            <a class="button button-dark button-small" href={`/review/submit${stay ? `?id=${stay.id}&stay=${encodeURIComponent(name)}` : `?stay=${encodeURIComponent(name)}`}`}>Write the first review</a>
           </div>
-
-          {stay.reviews.length ? (
-            <div class="review-list">
-              {stay.reviews.map((review) => (
-                <article class="review-card">
-                  <div class="review-card-head">
-                    <div>
-                      <div class="stars" aria-label={`${review.rating} out of 5`}>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</div>
-                      <h3>{review.title}</h3>
-                    </div>
-                    <span class="review-stay">Stayed {formatStay(review.stayMonth, review.stayYear)}</span>
-                  </div>
-                  <p class="review-body">“{review.body}”</p>
-                  <div class="review-footer">
-                    <div class="reviewer">
-                      <span class="avatar">{review.author.slice(0, 1).toUpperCase()}</span>
-                      <span><strong>{review.author}</strong><br />Email verified · Moderator approved</span>
-                    </div>
-                    <div class="review-tools">
-                      <button class="helpful" type="button" data-review-id={review.id}>Helpful · <span>{review.helpful}</span></button>
-                      <details class="report-details">
-                        <summary>Report</summary>
-                        <form class="report-form" data-review-id={review.id}>
-                          <label>
-                            <span>Reason</span>
-                            <select name="reason" required>
-                              <option value="">Choose</option>
-                              <option value="fake">Looks fake</option>
-                              <option value="spam">Spam</option>
-                              <option value="wrong-homestay">Wrong homestay</option>
-                              <option value="personal-info">Personal information</option>
-                              <option value="harassment">Harassment</option>
-                              <option value="other">Other</option>
-                            </select>
-                          </label>
-                          <textarea name="detail" maxlength="800" placeholder="Optional details"></textarea>
-                          <input name="email" type="email" maxlength="254" placeholder="Email (optional)" />
-                          <button type="submit">Send report</button>
-                          <span class="report-status" role="status"></span>
-                        </form>
-                      </details>
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <div class="empty-review-card">
-              <span class="review-mark">“</span>
-              <h3>No HomestayReview reviews yet.</h3>
-              <p>{hScore && hScore.sourceCount > 1 ? `This H-Score currently combines ${hScore.sourceCount} verified rating sources, including external platforms where matched. Guest themes still stay empty until people submit approved review text directly to HomestayReview.my.` : stay.googleReviewCount > 0 ? `The Google rating is an external score signal from ${stay.googleReviewCount.toLocaleString()} Google reviews. It contributes to H-Score with sample-size confidence, but we will not invent guest pros or complaints from star ratings alone.` : 'If you stayed here, you can be the first. Your review remains private until email verification and manual approval.'}</p>
-              <a class="button button-dark button-small" href={`/review/submit?id=${stay.id}&stay=${encodeURIComponent(stay.name)}`}>Write the first review</a>
-            </div>
-          )}
-        </div>
-
-        <aside class="detail-aside">
-          <div class="action-panel">
-            <p class="eyebrow">Stayed here?</p>
-            <h3>Make the score more useful.</h3>
-            <p>Share the details star ratings miss. Approved reviews strengthen H-Score and feed recurring guest themes.</p>
-            <a class="button button-dark button-wide" href={`/review/submit?id=${stay.id}&stay=${encodeURIComponent(stay.name)}`}>Write a review</a>
-          </div>
-          <div class="mini-info">
-            <h4>Why the score can change</h4>
-            <p>H-Score updates as review volume grows and new verified sources are added. Small samples are deliberately discounted.</p>
-          </div>
-          <div class="mini-info">
-            <h4>Sources stay visible</h4>
-            <p>Google, Booking.com and Agoda remain clearly labelled when verified. Facebook contributes only when a comparable public score and review count can be confirmed.</p>
-          </div>
-          <div class="mini-info">
-            <h4>Social chatter stays separate</h4>
-            <p>Threads and X posts can provide useful context, but they are not treated as verified stays and never change H-Score.</p>
-          </div>
-          <div class="mini-info">
-            <h4>Negative reviews are allowed</h4>
-            <p>Approval is about authenticity, relevance and safety. A critical rating is not rejected simply because it is negative.</p>
-          </div>
-        </aside>
-      </section>
-    </>
+        )}
+      </div>
+    </section>
   )}
-
-  <script>
-    document.querySelectorAll('.helpful').forEach((button) => {
-      button.addEventListener('click', async () => {
-        if (button.dataset.clicked === '1') return;
-        const reviewId = button.dataset.reviewId;
-        button.disabled = true;
-        try {
-          const response = await fetch(`/api/reviews/${reviewId}/helpful`, { method: 'POST' });
-          const data = await response.json();
-          if (!response.ok || !data.ok) throw new Error();
-          button.dataset.clicked = '1';
-          const counter = button.querySelector('span');
-          if (counter) counter.textContent = String(data.count);
-          button.firstChild.textContent = 'Helpful ✓ · ';
-        } catch {
-          button.disabled = false;
-        }
-      });
-    });
-
-    document.querySelectorAll('.report-form').forEach((form) => {
-      form.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        const reviewId = form.dataset.reviewId;
-        const status = form.querySelector('.report-status');
-        const submit = form.querySelector('button[type="submit"]');
-        submit.disabled = true;
-        status.textContent = 'Sending…';
-        try {
-          const response = await fetch(`/api/reviews/${reviewId}/report`, { method: 'POST', body: new FormData(form) });
-          const data = await response.json();
-          if (!response.ok || !data.ok) throw new Error(data.error || 'Could not send report.');
-          status.textContent = 'Sent ✓';
-          form.reset();
-        } catch (error) {
-          status.textContent = error instanceof Error ? error.message : 'Could not send report.';
-          submit.disabled = false;
-        }
-      });
-    });
-  </script>
 </BaseLayout>
