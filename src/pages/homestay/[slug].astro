@@ -2,6 +2,7 @@
 import { env } from 'cloudflare:workers';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getHomestayBySlug } from '../../lib/db';
+import { calculateHomestayScore, extractGuestInsights } from '../../lib/score';
 
 const db = env.DB;
 const slug = Astro.params.slug || '';
@@ -15,6 +16,13 @@ try {
 
 if (!stay) Astro.response.status = 404;
 const maxBar = stay ? Math.max(...stay.distribution, 0) : 0;
+const hScore = stay ? calculateHomestayScore({
+  homestayReviewRating: stay.averageRating,
+  homestayReviewCount: stay.reviewCount,
+  googleRating: stay.googleRating,
+  googleReviewCount: stay.googleReviewCount
+}) : null;
+const insights = stay ? extractGuestInsights(stay.reviews) : { loves: [], watchouts: [], reviewSampleSize: 0 };
 const googleMapsUrl = stay
   ? stay.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${stay.name} ${stay.city} ${stay.state} Malaysia`)}`
   : null;
@@ -26,7 +34,7 @@ const formatStay = (month: number | null, year: number | null) => {
 };
 ---
 
-<BaseLayout title={stay ? `${stay.name} reviews | HomestayReview.my` : 'Homestay not found | HomestayReview.my'} description={stay ? `Read manually moderated guest reviews and clearly labelled external Google rating references for ${stay.name} in ${stay.city}, ${stay.state}.` : 'This homestay listing could not be found.'}>
+<BaseLayout title={stay ? `${stay.name} score & reviews | HomestayReview.my` : 'Homestay not found | HomestayReview.my'} description={stay ? `See the independent HomestayReview Score, source breakdown and manually moderated guest reviews for ${stay.name} in ${stay.city}, ${stay.state}.` : 'This homestay listing could not be found.'}>
   {!stay ? (
     <section class="form-shell verification-shell">
       <div class="form-card verification-card">
@@ -50,47 +58,94 @@ const formatStay = (month: number | null, year: number | null) => {
         <div class="detail-title">
           <p class="eyebrow">{stay.city} · {stay.state}</p>
           <h1>{stay.name}</h1>
-          <p class="location">Homestay review listing</p>
+          <p class="location">Independent homestay review profile</p>
           {stay.address && <p class="detail-summary">{stay.address}</p>}
           {stay.tags.length > 0 && (
             <div class="tags" style="margin-top:18px">
               {stay.tags.map((tag) => <span class="tag">{tag}</span>)}
             </div>
           )}
-          {stay.googleRating !== null && stay.googleReviewCount > 0 && (
-            <div class="google-reference-card">
-              <div>
-                <span class="google-reference-label">External reference · Google</span>
+
+          <div class="source-strip">
+            {stay.googleRating !== null && stay.googleReviewCount > 0 && (
+              <div class="source-strip-item">
+                <span>Google reference</span>
                 <strong>{stay.googleRating.toFixed(1)} ★</strong>
-                <span>{stay.googleReviewCount.toLocaleString()} Google reviews</span>
+                <small>{stay.googleReviewCount.toLocaleString()} reviews</small>
               </div>
-              {googleMapsUrl && <a href={googleMapsUrl} target="_blank" rel="nofollow noopener">View on Google Maps →</a>}
-            </div>
-          )}
+            )}
+            {stay.reviewCount > 0 && (
+              <div class="source-strip-item own-source">
+                <span>HomestayReview</span>
+                <strong>{stay.averageRating.toFixed(1)} ★</strong>
+                <small>{stay.reviewCount.toLocaleString()} approved {stay.reviewCount === 1 ? 'review' : 'reviews'}</small>
+              </div>
+            )}
+            {googleMapsUrl && <a class="source-strip-link" href={googleMapsUrl} target="_blank" rel="nofollow noopener">Google Maps ↗</a>}
+          </div>
+
           {stay.sourceName && (
             <p class="listing-source">Listing information: {stay.sourceUrl ? <a href={stay.sourceUrl} rel="nofollow">{stay.sourceName}</a> : stay.sourceName}{stay.googleDataCheckedAt ? ` · checked ${stay.googleDataCheckedAt}` : ''}</p>
           )}
         </div>
 
-        <div class:list={["detail-score-card", stay.reviewCount === 0 && 'detail-score-empty']} aria-label={stay.reviewCount ? `${stay.averageRating} out of 5 from ${stay.reviewCount} HomestayReview reviews` : 'No approved HomestayReview reviews yet'}>
-          <div class="detail-score-top">
-            <strong>{stay.reviewCount ? stay.averageRating.toFixed(1) : 'NEW'}</strong>
-            <span>{stay.reviewCount}<br />HR {stay.reviewCount === 1 ? 'review' : 'reviews'}</span>
+        <div class="hscore-panel" aria-label={hScore?.score ? `HomestayReview Score ${hScore.score} out of 100 with ${hScore.confidence} confidence` : 'No HomestayReview Score yet'}>
+          <div class="hscore-kicker">HOMESTAYREVIEW SCORE</div>
+          <div class="hscore-number-row">
+            <strong>{hScore?.score ?? '—'}</strong>
+            <span>/100</span>
           </div>
-          {stay.reviewCount > 0 ? <div class="stars" aria-hidden="true">★★★★★</div> : <p class="first-review-copy">No HomestayReview rating yet.</p>}
-          <div class="rating-bars">
-            {[5, 4, 3, 2, 1].map((rating, index) => {
-              const amount = stay.distribution[index];
-              const width = maxBar ? (amount / maxBar) * 100 : 0;
-              return (
-                <div class="rating-bar-row">
-                  <span>{rating}</span>
-                  <div class="bar"><i style={`width:${width}%`}></i></div>
-                  <span>{amount}</span>
+          <div class:list={['hscore-confidence', `confidence-${hScore?.confidence || 'none'}`]}>{(hScore?.confidence || 'none').toUpperCase()} CONFIDENCE</div>
+          <p>{hScore?.score ? `${hScore.evidenceCount.toLocaleString()} review signals across ${hScore.sourceCount} verified ${hScore.sourceCount === 1 ? 'source' : 'sources'}.` : 'Not enough verified rating evidence yet.'}</p>
+          {hScore?.breakdown.length ? (
+            <div class="hscore-breakdown">
+              {hScore.breakdown.map((source) => (
+                <div class="hscore-source-row">
+                  <div>
+                    <b>{source.label}</b>
+                    <span>{source.reviewCount.toLocaleString()} reviews · {Math.round(source.confidence * 100)}% source confidence</span>
+                  </div>
+                  <strong>{Math.round(source.normalizedScore)}</strong>
                 </div>
-              );
-            })}
-          </div>
+              ))}
+            </div>
+          ) : null}
+          <a class="hscore-method-link" href="/#method">How H-Score works →</a>
+        </div>
+      </section>
+
+      <section class="guest-signal-section">
+        <div class="section-title">
+          <h2>What guests keep mentioning</h2>
+          <span>{insights.reviewSampleSize ? `${insights.reviewSampleSize} approved HR reviews analysed` : 'Waiting for approved review text'}</span>
+        </div>
+
+        <div class="guest-signal-grid">
+          <article class="guest-signal-card love-card">
+            <div class="guest-signal-heading"><span>+</span><h3>Guests love</h3></div>
+            {insights.loves.length ? (
+              <div class="guest-theme-list">
+                {insights.loves.map((item) => (
+                  <div class="guest-theme"><strong>{item.label}</strong><span>{item.mentions} {item.mentions === 1 ? 'mention' : 'mentions'} · {item.evidence} evidence</span></div>
+                ))}
+              </div>
+            ) : (
+              <p>Not enough approved HomestayReview text yet. We do not manufacture positive themes from external star ratings.</p>
+            )}
+          </article>
+
+          <article class="guest-signal-card watch-card">
+            <div class="guest-signal-heading"><span>!</span><h3>Watch out for</h3></div>
+            {insights.watchouts.length ? (
+              <div class="guest-theme-list">
+                {insights.watchouts.map((item) => (
+                  <div class="guest-theme"><strong>{item.label}</strong><span>{item.mentions} {item.mentions === 1 ? 'mention' : 'mentions'} · {item.evidence} evidence</span></div>
+                ))}
+              </div>
+            ) : (
+              <p>No recurring negative theme has enough approved HomestayReview evidence yet.</p>
+            )}
+          </article>
         </div>
       </section>
 
@@ -150,7 +205,7 @@ const formatStay = (month: number | null, year: number | null) => {
             <div class="empty-review-card">
               <span class="review-mark">“</span>
               <h3>No HomestayReview reviews yet.</h3>
-              <p>{stay.googleReviewCount > 0 ? `The Google score above is an external reference from ${stay.googleReviewCount.toLocaleString()} Google reviews. Be the first person to submit a review directly to HomestayReview.my.` : 'If you stayed here, you can be the first. Your review remains private until email verification and manual approval.'}</p>
+              <p>{stay.googleReviewCount > 0 ? `The Google rating is an external score signal from ${stay.googleReviewCount.toLocaleString()} Google reviews. It contributes to H-Score with sample-size confidence, but we will not invent guest pros or complaints from star ratings alone.` : 'If you stayed here, you can be the first. Your review remains private until email verification and manual approval.'}</p>
               <a class="button button-dark button-small" href={`/review/submit?id=${stay.id}&stay=${encodeURIComponent(stay.name)}`}>Write the first review</a>
             </div>
           )}
@@ -159,17 +214,17 @@ const formatStay = (month: number | null, year: number | null) => {
         <aside class="detail-aside">
           <div class="action-panel">
             <p class="eyebrow">Stayed here?</p>
-            <h3>Leave the useful details behind.</h3>
-            <p>Share what the next guest should know. Your review stays private until it passes moderation.</p>
+            <h3>Make the score more useful.</h3>
+            <p>Share the details star ratings miss. Approved reviews strengthen H-Score and feed recurring guest themes.</p>
             <a class="button button-dark button-wide" href={`/review/submit?id=${stay.id}&stay=${encodeURIComponent(stay.name)}`}>Write a review</a>
           </div>
           <div class="mini-info">
-            <h4>Google vs HomestayReview</h4>
-            <p>Google rating and review count are external reference data. Reviews shown in the main feed are submitted directly here and manually moderated.</p>
+            <h4>Why the score can change</h4>
+            <p>H-Score updates as review volume grows and new verified sources are added. Small samples are deliberately discounted.</p>
           </div>
           <div class="mini-info">
-            <h4>How moderation works</h4>
-            <p>Reviews are email-verified, bot-checked and manually approved before publishing.</p>
+            <h4>Sources stay visible</h4>
+            <p>Google and future external sources remain clearly labelled. They are never presented as HomestayReview submissions.</p>
           </div>
           <div class="mini-info">
             <h4>Negative reviews are allowed</h4>
