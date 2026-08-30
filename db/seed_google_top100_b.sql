@@ -1,6 +1,5 @@
-INSERT OR IGNORE INTO homestays (name,slug,city,state,google_rating,google_review_count,source_name,source_url,status,google_data_checked_at)
-SELECT name,slug,city,state,rating,review_count,'Google Maps via SeekHomestay','https://seekhomestay.my/','active','2026-08-30'
-FROM (VALUES
+WITH v(name,slug,city,state,rating,review_count) AS (
+VALUES
 ('The Best Rumah Amaan in Langkawi','google-top-051','Langkawi','Kedah',5.0,23),
 ('Ipoh South Homestay 8-16pax 10mins to attraction','google-top-052','Ipoh','Perak',5.0,22),
 ('D’Ipoh Homestay','google-top-053','Ipoh','Perak',5.0,20),
@@ -50,4 +49,8 @@ FROM (VALUES
 ('Homestay Tok Puan (IPOH)','google-top-097','Ipoh','Perak',4.9,46),
 ('MIA HOMESTAY IPOH (MUSLIM FRIENDLY)','google-top-098','Ipoh','Perak',4.9,38),
 ('Homestay Ipoh d’Hakimi Sari 34','google-top-099','Ipoh','Perak',4.9,36),
-('AiNad Guesthouse Ipoh','google-top-100','Ipoh','Perak',4.9,30)) AS v(name,slug,city,state,rating,review_count);
+('AiNad Guesthouse Ipoh','google-top-100','Ipoh','Perak',4.9,30)
+)
+INSERT OR IGNORE INTO homestays (name,slug,city,state,google_rating,google_review_count,source_name,source_url,status,google_data_checked_at)
+SELECT name,slug,city,state,rating,review_count,'Google Maps via SeekHomestay','https://seekhomestay.my/','active','2026-08-30'
+FROM v;
