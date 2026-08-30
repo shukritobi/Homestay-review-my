@@ -14,6 +14,9 @@ try {
 
 if (!stay) Astro.response.status = 404;
 const maxBar = stay ? Math.max(...stay.distribution, 0) : 0;
+const googleMapsUrl = stay
+  ? stay.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${stay.name} ${stay.city} ${stay.state} Malaysia`)}`
+  : null;
 const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const formatStay = (month: number | null, year: number | null) => {
   if (!year) return 'Date not provided';
@@ -22,7 +25,7 @@ const formatStay = (month: number | null, year: number | null) => {
 };
 ---
 
-<BaseLayout title={stay ? `${stay.name} reviews | HomestayReview.my` : 'Homestay not found | HomestayReview.my'} description={stay ? `Read manually moderated guest reviews and ratings for ${stay.name} in ${stay.city}, ${stay.state}.` : 'This homestay listing could not be found.'}>
+<BaseLayout title={stay ? `${stay.name} reviews | HomestayReview.my` : 'Homestay not found | HomestayReview.my'} description={stay ? `Read manually moderated guest reviews and clearly labelled external Google rating references for ${stay.name} in ${stay.city}, ${stay.state}.` : 'This homestay listing could not be found.'}>
   {!stay ? (
     <section class="form-shell verification-shell">
       <div class="form-card verification-card">
@@ -53,17 +56,27 @@ const formatStay = (month: number | null, year: number | null) => {
               {stay.tags.map((tag) => <span class="tag">{tag}</span>)}
             </div>
           )}
+          {stay.googleRating !== null && stay.googleReviewCount > 0 && (
+            <div class="google-reference-card">
+              <div>
+                <span class="google-reference-label">External reference · Google</span>
+                <strong>{stay.googleRating.toFixed(1)} ★</strong>
+                <span>{stay.googleReviewCount.toLocaleString()} Google reviews</span>
+              </div>
+              {googleMapsUrl && <a href={googleMapsUrl} target="_blank" rel="nofollow noopener">View on Google Maps →</a>}
+            </div>
+          )}
           {stay.sourceName && (
-            <p class="listing-source">Listing information: {stay.sourceUrl ? <a href={stay.sourceUrl} rel="nofollow">{stay.sourceName}</a> : stay.sourceName}</p>
+            <p class="listing-source">Listing information: {stay.sourceUrl ? <a href={stay.sourceUrl} rel="nofollow">{stay.sourceName}</a> : stay.sourceName}{stay.googleDataCheckedAt ? ` · checked ${stay.googleDataCheckedAt}` : ''}</p>
           )}
         </div>
 
-        <div class:list={["detail-score-card", stay.reviewCount === 0 && 'detail-score-empty']} aria-label={stay.reviewCount ? `${stay.averageRating} out of 5 from ${stay.reviewCount} reviews` : 'No approved reviews yet'}>
+        <div class:list={["detail-score-card", stay.reviewCount === 0 && 'detail-score-empty']} aria-label={stay.reviewCount ? `${stay.averageRating} out of 5 from ${stay.reviewCount} HomestayReview reviews` : 'No approved HomestayReview reviews yet'}>
           <div class="detail-score-top">
             <strong>{stay.reviewCount ? stay.averageRating.toFixed(1) : 'NEW'}</strong>
-            <span>{stay.reviewCount}<br />{stay.reviewCount === 1 ? 'review' : 'reviews'}</span>
+            <span>{stay.reviewCount}<br />HR {stay.reviewCount === 1 ? 'review' : 'reviews'}</span>
           </div>
-          {stay.reviewCount > 0 ? <div class="stars" aria-hidden="true">★★★★★</div> : <p class="first-review-copy">No approved ratings yet.</p>}
+          {stay.reviewCount > 0 ? <div class="stars" aria-hidden="true">★★★★★</div> : <p class="first-review-copy">No HomestayReview rating yet.</p>}
           <div class="rating-bars">
             {[5, 4, 3, 2, 1].map((rating, index) => {
               const amount = stay.distribution[index];
@@ -83,7 +96,7 @@ const formatStay = (month: number | null, year: number | null) => {
       <section class="detail-layout">
         <div>
           <div class="section-title">
-            <h2>Guest reviews</h2>
+            <h2>HomestayReview reviews</h2>
             <span>{stay.reviewCount ? 'Newest first' : 'Waiting for the first review'}</span>
           </div>
 
@@ -135,8 +148,8 @@ const formatStay = (month: number | null, year: number | null) => {
           ) : (
             <div class="empty-review-card">
               <span class="review-mark">“</span>
-              <h3>No public reviews yet.</h3>
-              <p>If you stayed here, you can be the first. Your review remains private until email verification and manual approval.</p>
+              <h3>No HomestayReview reviews yet.</h3>
+              <p>{stay.googleReviewCount > 0 ? `The Google score above is an external reference from ${stay.googleReviewCount.toLocaleString()} Google reviews. Be the first person to submit a review directly to HomestayReview.my.` : 'If you stayed here, you can be the first. Your review remains private until email verification and manual approval.'}</p>
               <a class="button button-dark button-small" href={`/review/submit?id=${stay.id}&stay=${encodeURIComponent(stay.name)}`}>Write the first review</a>
             </div>
           )}
@@ -148,6 +161,10 @@ const formatStay = (month: number | null, year: number | null) => {
             <h3>Leave the useful details behind.</h3>
             <p>Share what the next guest should know. Your review stays private until it passes moderation.</p>
             <a class="button button-dark button-wide" href={`/review/submit?id=${stay.id}&stay=${encodeURIComponent(stay.name)}`}>Write a review</a>
+          </div>
+          <div class="mini-info">
+            <h4>Google vs HomestayReview</h4>
+            <p>Google rating and review count are external reference data. Reviews shown in the main feed are submitted directly here and manually moderated.</p>
           </div>
           <div class="mini-info">
             <h4>How moderation works</h4>
