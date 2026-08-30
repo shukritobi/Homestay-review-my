@@ -27,7 +27,7 @@ jobs:
         run: npm ci
       - name: Audit dependencies
         run: npm audit --audit-level=high
-      - name: Validate D1 schema and seed
+      - name: Validate D1 schema and seeds
         run: |
           python3 - <<'PY'
           import pathlib
@@ -36,12 +36,16 @@ jobs:
           db = sqlite3.connect(':memory:')
           db.executescript(pathlib.Path('db/schema.sql').read_text())
           db.executescript(pathlib.Path('db/seed.sql').read_text())
+          db.executescript(pathlib.Path('db/seed_google_top100_a.sql').read_text())
+          db.executescript(pathlib.Path('db/seed_google_top100_b.sql').read_text())
 
           listings = db.execute('SELECT COUNT(*) FROM homestays').fetchone()[0]
+          google_listings = db.execute('SELECT COUNT(*) FROM homestays WHERE google_rating IS NOT NULL').fetchone()[0]
           reviews = db.execute('SELECT COUNT(*) FROM reviews').fetchone()[0]
-          assert listings >= 18, f'Expected starter listings, found {listings}'
-          assert reviews == 0, f'Seed must contain zero reviews, found {reviews}'
-          print(f'Validated {listings} starter listings and {reviews} seeded reviews')
+          assert listings >= 118, f'Expected at least 118 listings, found {listings}'
+          assert google_listings == 100, f'Expected 100 Google-reference listings, found {google_listings}'
+          assert reviews == 0, f'Seed must contain zero HomestayReview reviews, found {reviews}'
+          print(f'Validated {listings} listings, {google_listings} Google-reference listings and {reviews} seeded reviews')
           PY
       - name: Build Cloudflare Worker
         run: npm run build
