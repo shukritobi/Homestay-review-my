@@ -15,10 +15,10 @@ import {
   verifyTurnstile
 } from '../../../lib/security';
 
-export const POST: APIRoute = async ({ request, locals }) => {
+export const POST: APIRoute = async ({ request }) => {
   const db = env.DB;
 
-  if (!db || !env.TURNSTILE_SECRET || !env.RESEND_API_KEY || !env.HASH_SALT || !env.APP_URL) {
+  if (!db || !env.TURNSTILE_SECRET || !env.RESEND_API_KEY || !env.ADMIN_EMAIL || !env.HASH_SALT || !env.APP_URL || !env.EMAIL_FROM) {
     return json({ ok: false, error: 'The review service is not fully configured yet.' }, 503);
   }
 
@@ -27,6 +27,11 @@ export const POST: APIRoute = async ({ request, locals }) => {
     form = await request.formData();
   } catch {
     return json({ ok: false, error: 'Invalid form submission.' }, 400);
+  }
+
+  // Honeypot: ordinary users never see this field. Bots commonly fill every text input.
+  if (cleanText(form.get('website'), 200)) {
+    return json({ ok: true, message: 'Thanks. Your submission has been received.' });
   }
 
   const turnstileToken = cleanText(form.get('cf-turnstile-response'), 2048);
@@ -65,7 +70,6 @@ export const POST: APIRoute = async ({ request, locals }) => {
   const ipHash = await sha256(`${env.HASH_SALT}|ip|${remoteIp || 'unknown'}`);
   const userAgentHash = await sha256(`${env.HASH_SALT}|ua|${userAgent}`);
 
-  // Remove abandoned, expired email-verification attempts so genuine users can try again.
   await db.batch([
     db.prepare(`
       DELETE FROM review_verification_tokens
@@ -87,7 +91,6 @@ export const POST: APIRoute = async ({ request, locals }) => {
       AND NOT EXISTS (SELECT 1 FROM reviews WHERE reviews.homestay_id = homestays.id)
   `).run();
 
-  // Lightweight D1 rate limiting. Turnstile is still mandatory, but this caps email/database abuse.
   const [ipBurst, emailBurst] = await Promise.all([
     db.prepare(`
       SELECT COUNT(*) AS total FROM reviews
@@ -134,14 +137,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
       `).bind(homestayName, slug, city, state).run();
 
       createdHomestayId = Number(inserted.meta.last_row_id);
-      homestay = {
-        id: createdHomestayId,
-        name: homestayName,
-        slug,
-        city,
-        state,
-        status: 'pending'
-      };
+      homestay = { id: createdHomestayId, name: homestayName, slug, city, state, status: 'pending' };
     }
   }
 
@@ -156,8 +152,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
   if (recent) {
     if (createdHomestayId) {
       await db.prepare(`DELETE FROM homestays WHERE id = ? AND NOT EXISTS (SELECT 1 FROM reviews WHERE homestay_id = ?)`)
-        .bind(createdHomestayId, createdHomestayId)
-        .run();
+        .bind(createdHomestayId, createdHomestayId).run();
     }
     return json({ ok: false, error: 'This email already submitted a review for this homestay recently.' }, 409);
   }
@@ -168,17 +163,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
       stay_month, stay_year, trip_type, status, ip_hash, user_agent_hash
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending_email', ?, ?)
   `).bind(
-    homestay.id,
-    reviewerName,
-    reviewerEmail,
-    rating,
-    reviewTitle,
-    reviewBody,
-    stay.month,
-    stay.year,
-    tripType || null,
-    ipHash,
-    userAgentHash
+    homestay.id, reviewerName, reviewerEmail, rating, reviewTitle, reviewBody,
+    stay.month, stay.year, tripType || null, ipHash, userAgentHash
   ).run();
 
   const reviewId = Number(insertedReview.meta.last_row_id);
@@ -209,8 +195,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
     ]);
     if (createdHomestayId) {
       await db.prepare(`DELETE FROM homestays WHERE id = ? AND status = 'pending' AND NOT EXISTS (SELECT 1 FROM reviews WHERE homestay_id = ?)`)
-        .bind(createdHomestayId, createdHomestayId)
-        .run();
+        .bind(createdHomestayId, createdHomestayId).run();
     }
     console.error('Verification email failed', error);
     return json({ ok: false, error: 'We could not send the verification email. Please try again.' }, 502);
