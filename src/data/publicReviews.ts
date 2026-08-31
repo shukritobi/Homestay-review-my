@@ -1,3 +1,5 @@
+import { PUBLIC_REVIEW_SNIPPETS_MORE } from './publicReviewsMore';
+
 export type PublicReviewSnippet = {
   summary: string;
   author?: string;
@@ -50,5 +52,5 @@ export const PUBLIC_REVIEW_SNIPPETS: Record<string, PublicReviewSnippet[]> = {
 };
 
 export function getPublicReviewSnippets(slug: string): PublicReviewSnippet[] {
-  return PUBLIC_REVIEW_SNIPPETS[slug] || [];
+  return [...(PUBLIC_REVIEW_SNIPPETS[slug] || []), ...(PUBLIC_REVIEW_SNIPPETS_MORE[slug] || [])];
 }
