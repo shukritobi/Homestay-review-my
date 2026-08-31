@@ -7,6 +7,7 @@ import { getAdditionalScoreSources } from '../data/externalRatings';
 import { COMMUNITY_LISTINGS } from '../data/communityListings';
 import { getVerifiedSocialMentions } from '../data/socialMentions';
 import { getPublicReviewSnippets } from '../data/publicReviews';
+import { getPublicGuestReviews } from '../data/publicGuestReviews';
 
 const db = env.DB;
 let homestays: Awaited<ReturnType<typeof listHomestays>> = [];
@@ -28,6 +29,7 @@ const dbItems = homestays.map((stay) => {
     additionalSources: getAdditionalScoreSources(stay.slug)
   });
   const mentions = getVerifiedSocialMentions(stay.slug);
+  const guestReviews = getPublicGuestReviews(stay.slug);
   const publicReviews = getPublicReviewSnippets(stay.slug);
   return {
     name: stay.name,
@@ -36,8 +38,8 @@ const dbItems = homestays.map((stay) => {
     state: stay.state,
     score: hScore.score,
     evidenceCount: hScore.evidenceCount,
-    text: stay.latestReview || mentions[0]?.summary || publicReviews[0]?.summary || '',
-    textCount: stay.reviewCount + mentions.length + publicReviews.length
+    text: stay.latestReview || guestReviews[0]?.summary || mentions[0]?.summary || publicReviews[0]?.summary || '',
+    textCount: stay.reviewCount + guestReviews.length + mentions.length + publicReviews.length
   };
 });
 
@@ -46,13 +48,14 @@ const communityItems = COMMUNITY_LISTINGS
   .filter((item) => !knownSlugs.has(item.slug))
   .map((item) => {
     const mentions = getVerifiedSocialMentions(item.slug);
+    const guestReviews = getPublicGuestReviews(item.slug);
     const publicReviews = getPublicReviewSnippets(item.slug);
     return {
       ...item,
       score: null as number | null,
       evidenceCount: 0,
-      text: mentions[0]?.summary || publicReviews[0]?.summary || '',
-      textCount: mentions.length + publicReviews.length
+      text: guestReviews[0]?.summary || mentions[0]?.summary || publicReviews[0]?.summary || '',
+      textCount: guestReviews.length + mentions.length + publicReviews.length
     };
   });
 
@@ -95,7 +98,7 @@ const states = [...new Set(rankedHomestays.map((stay) => stay.state))].sort();
             <a class="hlist-card lean-card" href={`/homestay/${stay.slug}`}
               data-slug={stay.slug} data-name={stay.name.toLowerCase()} data-display-name={stay.name}
               data-city={stay.city.toLowerCase()} data-city-display={stay.city} data-state={stay.state}
-              data-score={stay.score || 0} data-evidence={stay.evidenceCount || stay.textCount}>
+              data-score={stay.score || 0} data-evidence={stay.evidenceCount}>
               <div class="hlist-score"><strong>{stay.score ?? '—'}</strong><small>SCORE</small></div>
               <div class="hlist-card-copy">
                 <div class="hlist-card-top">
@@ -107,7 +110,7 @@ const states = [...new Set(rankedHomestays.map((stay) => stay.state))].sort();
                   {stay.evidenceCount > 0 && <strong>{stay.evidenceCount.toLocaleString()} reviews</strong>}
                   {stay.evidenceCount === 0 && stay.textCount > 0 && <strong>{stay.textCount} review{stay.textCount === 1 ? '' : 's'}</strong>}
                 </div>
-                {stay.text && <p class="hlist-blurb lean-review">{stay.text}</p>}
+                {stay.text && <p class="hlist-blurb lean-review">“{stay.text}”</p>}
               </div>
               <span class="hlist-arrow" aria-hidden="true">›</span>
             </a>
