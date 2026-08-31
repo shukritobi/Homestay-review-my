@@ -1,4 +1,5 @@
 import type { PublicReviewSnippet } from './publicReviews';
+import { PUBLIC_REVIEW_SNIPPETS_MORE_5 } from './publicReviewsMore5';
 
 export const PUBLIC_REVIEW_SNIPPETS_MORE_4: Record<string, PublicReviewSnippet[]> = {
   'google-top-004': [
@@ -44,5 +45,6 @@ export const PUBLIC_REVIEW_SNIPPETS_MORE_4: Record<string, PublicReviewSnippet[]
       postedAt: '2025-10-23',
       sourceUrl: 'https://hotelandplace.com/hotel/ammar-troika'
     }
-  ]
+  ],
+  ...PUBLIC_REVIEW_SNIPPETS_MORE_5
 };
