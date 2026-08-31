@@ -1,4 +1,5 @@
 import type { PublicReviewSnippet } from './publicReviews';
+import { PUBLIC_REVIEW_SNIPPETS_MORE_7 } from './publicReviewsMore7';
 
 export const PUBLIC_REVIEW_SNIPPETS_MORE_6: Record<string, PublicReviewSnippet[]> = {
   'google-top-012': [
@@ -38,5 +39,6 @@ export const PUBLIC_REVIEW_SNIPPETS_MORE_6: Record<string, PublicReviewSnippet[]
       summary: 'The current guest sample is tiny but exceptionally positive, with perfect scores for facilities, cleanliness, comfort, value and staff, and a strong location score.',
       sourceUrl: 'https://www.booking.com/hotel/my/ameera-family-homestay.html'
     }
-  ]
+  ],
+  ...PUBLIC_REVIEW_SNIPPETS_MORE_7
 };
