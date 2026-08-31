@@ -1,4 +1,5 @@
 import type { PublicReviewSnippet } from './publicReviews';
+import { PUBLIC_REVIEW_SNIPPETS_MORE_6 } from './publicReviewsMore6';
 
 export const PUBLIC_REVIEW_SNIPPETS_MORE_5: Record<string, PublicReviewSnippet[]> = {
   'google-top-071': [
@@ -16,5 +17,6 @@ export const PUBLIC_REVIEW_SNIPPETS_MORE_5: Record<string, PublicReviewSnippet[]
       summary: 'A separate public listing has only one review and a 4/5 overall score, so there is still too little guest evidence to draw a reliable conclusion.',
       sourceUrl: 'https://www.airbnb.com/rooms/874940588603890725'
     }
-  ]
+  ],
+  ...PUBLIC_REVIEW_SNIPPETS_MORE_6
 };
