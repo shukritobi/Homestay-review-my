@@ -107,7 +107,7 @@ const states = [...new Set(rankedHomestays.map((stay) => stay.state))].sort();
                   {stay.evidenceCount > 0 && <strong>{stay.evidenceCount.toLocaleString()} reviews</strong>}
                   {stay.evidenceCount === 0 && stay.textCount > 0 && <strong>{stay.textCount} review{stay.textCount === 1 ? '' : 's'}</strong>}
                 </div>
-                {stay.text && <p class="hlist-blurb lean-review">“{stay.text}”</p>}
+                {stay.text && <p class="hlist-blurb lean-review">{stay.text}</p>}
               </div>
               <span class="hlist-arrow" aria-hidden="true">›</span>
             </a>
