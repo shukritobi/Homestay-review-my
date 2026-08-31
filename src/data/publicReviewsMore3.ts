@@ -1,4 +1,5 @@
 import type { PublicReviewSnippet } from './publicReviews';
+import { PUBLIC_REVIEW_SNIPPETS_MORE_4 } from './publicReviewsMore4';
 
 export const PUBLIC_REVIEW_SNIPPETS_MORE_3: Record<string, PublicReviewSnippet[]> = {
   'google-top-011': [
@@ -14,5 +15,6 @@ export const PUBLIC_REVIEW_SNIPPETS_MORE_3: Record<string, PublicReviewSnippet[]
       postedAt: '2025-09-10',
       sourceUrl: 'https://www.tiket.com/id-id/hotel/malaysia/ds-vivacitymall-jazz-suite-1101-511001669029936265'
     }
-  ]
+  ],
+  ...PUBLIC_REVIEW_SNIPPETS_MORE_4
 };
