@@ -6,6 +6,7 @@ import { calculateHomestayScore } from '../../lib/score';
 import { getAdditionalScoreSources } from '../../data/externalRatings';
 import { getCommunityListing } from '../../data/communityListings';
 import { getVerifiedSocialMentions } from '../../data/socialMentions';
+import { getPublicReviewSnippets } from '../../data/publicReviews';
 
 const db = env.DB;
 const slug = Astro.params.slug || '';
@@ -24,6 +25,7 @@ const name = stay?.name || community?.name || '';
 const city = stay?.city || community?.city || '';
 const state = stay?.state || community?.state || '';
 const mentions = exists ? getVerifiedSocialMentions(slug) : [];
+const publicReviews = exists ? getPublicReviewSnippets(slug) : [];
 const hScore = stay ? calculateHomestayScore({
   homestayReviewRating: stay.averageRating,
   homestayReviewCount: stay.reviewCount,
@@ -33,12 +35,13 @@ const hScore = stay ? calculateHomestayScore({
 }) : null;
 const evidenceCount = hScore?.evidenceCount || 0;
 const ownReviews = stay?.reviews || [];
+const fallbackReviewCount = mentions.length + publicReviews.length;
 const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const formatStay = (month: number | null, year: number | null) => {
   if (!year) return '';
   return month && month >= 1 && month <= 12 ? `${monthNames[month - 1]} ${year}` : String(year);
 };
-const formatDate = (value: string | null) => value ? new Intl.DateTimeFormat('en-MY',{day:'numeric',month:'short',year:'numeric'}).format(new Date(`${value}T00:00:00Z`)) : '';
+const formatDate = (value?: string | null) => value ? new Intl.DateTimeFormat('en-MY',{day:'numeric',month:'short',year:'numeric'}).format(new Date(`${value}T00:00:00Z`)) : '';
 ---
 
 <BaseLayout title={exists ? `${name} | HomestayReview.my` : 'Not found | HomestayReview.my'}>
@@ -66,7 +69,7 @@ const formatDate = (value: string | null) => value ? new Intl.DateTimeFormat('en
 
       <div class="lean-count-row">
         {evidenceCount > 0 && <strong>{evidenceCount.toLocaleString()} reviews</strong>}
-        {evidenceCount === 0 && mentions.length > 0 && <strong>{mentions.length} review{mentions.length === 1 ? '' : 's'}</strong>}
+        {evidenceCount === 0 && fallbackReviewCount > 0 && <strong>{fallbackReviewCount} review{fallbackReviewCount === 1 ? '' : 's'}</strong>}
         <a href={`/review/submit${stay ? `?id=${stay.id}&stay=${encodeURIComponent(name)}` : `?stay=${encodeURIComponent(name)}`}`}>+ Write a review</a>
       </div>
 
@@ -85,17 +88,21 @@ const formatDate = (value: string | null) => value ? new Intl.DateTimeFormat('en
 
         {mentions.map((mention) => (
           <article class="lean-review-card community-card">
-            <div class="lean-review-head">
-              <span>{formatDate(mention.postedAt)}</span>
-            </div>
+            <div class="lean-review-head"><span>{formatDate(mention.postedAt)}</span></div>
             <p>“{mention.summary}”</p>
-            <div class="lean-review-author">
-              <a href={mention.profileUrl} target="_blank" rel="nofollow noopener"><strong>{mention.author}</strong></a>
-            </div>
+            <div class="lean-review-author"><strong>{mention.author}</strong></div>
           </article>
         ))}
 
-        {ownReviews.length === 0 && mentions.length === 0 && (
+        {publicReviews.map((review) => (
+          <article class="lean-review-card community-card">
+            {review.postedAt && <div class="lean-review-head"><span>{formatDate(review.postedAt)}</span></div>}
+            <p>“{review.summary}”</p>
+            {review.author && <div class="lean-review-author"><strong>{review.author}</strong></div>}
+          </article>
+        ))}
+
+        {ownReviews.length === 0 && mentions.length === 0 && publicReviews.length === 0 && (
           <div class="lean-no-review">
             <strong>No written reviews yet.</strong>
             <a class="button button-dark button-small" href={`/review/submit${stay ? `?id=${stay.id}&stay=${encodeURIComponent(name)}` : `?stay=${encodeURIComponent(name)}`}`}>Write the first review</a>
