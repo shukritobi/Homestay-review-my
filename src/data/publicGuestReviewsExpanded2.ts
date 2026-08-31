@@ -1,4 +1,5 @@
 import { getExpandedPublicGuestReviews } from './publicGuestReviewsExpanded';
+import { PUBLIC_GUEST_REVIEWS_EXPANDED_3 } from './publicGuestReviewsExpanded3';
 import type { PublicGuestReview } from './publicGuestReviews';
 
 // Second enrichment sweep: more individual, property-specific guest stays.
@@ -218,11 +219,21 @@ export const PUBLIC_GUEST_REVIEWS_EXPANDED_2: Record<string, PublicGuestReview[]
 };
 
 export function getExpandedPublicGuestReviews2(slug: string): PublicGuestReview[] {
-  return [...getExpandedPublicGuestReviews(slug), ...(PUBLIC_GUEST_REVIEWS_EXPANDED_2[slug] || [])];
+  return [
+    ...getExpandedPublicGuestReviews(slug),
+    ...(PUBLIC_GUEST_REVIEWS_EXPANDED_2[slug] || []),
+    ...(PUBLIC_GUEST_REVIEWS_EXPANDED_3[slug] || [])
+  ];
 }
 
 export const EXPANDED_PUBLIC_GUEST_REVIEW_COVERAGE_2 = {
-  listingsWithAdditionalReviews: Object.keys(PUBLIC_GUEST_REVIEWS_EXPANDED_2).length,
-  additionalReviewSnippets: Object.values(PUBLIC_GUEST_REVIEWS_EXPANDED_2).reduce((sum, items) => sum + items.length, 0),
+  listingsWithAdditionalReviews: new Set([
+    ...Object.keys(PUBLIC_GUEST_REVIEWS_EXPANDED_2),
+    ...Object.keys(PUBLIC_GUEST_REVIEWS_EXPANDED_3)
+  ]).size,
+  additionalReviewSnippets: [
+    ...Object.values(PUBLIC_GUEST_REVIEWS_EXPANDED_2),
+    ...Object.values(PUBLIC_GUEST_REVIEWS_EXPANDED_3)
+  ].reduce((sum, items) => sum + items.length, 0),
   checkedAt: '2026-08-31'
 } as const;
