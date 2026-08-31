@@ -5,9 +5,7 @@ import { listHomestays } from '../lib/db';
 import { calculateHomestayScore } from '../lib/score';
 import { getAdditionalScoreSources } from '../data/externalRatings';
 import { COMMUNITY_LISTINGS } from '../data/communityListings';
-import { getVerifiedSocialMentions } from '../data/socialMentions';
-import { getPublicReviewSnippets } from '../data/publicReviews';
-import { getExpandedPublicGuestReviews2 } from '../data/publicGuestReviewsExpanded2';
+import { getRawPublicReviews } from '../data/rawPublicReviews';
 
 const db = env.DB;
 let homestays: Awaited<ReturnType<typeof listHomestays>> = [];
@@ -28,9 +26,8 @@ const dbItems = homestays.map((stay) => {
     googleReviewCount: stay.googleReviewCount,
     additionalSources: getAdditionalScoreSources(stay.slug)
   });
-  const mentions = getVerifiedSocialMentions(stay.slug);
-  const guestReviews = getExpandedPublicGuestReviews2(stay.slug);
-  const publicReviews = getPublicReviewSnippets(stay.slug);
+  const rawReviews = getRawPublicReviews(stay.slug);
+  const ownText = stay.latestReview || '';
   return {
     name: stay.name,
     slug: stay.slug,
@@ -38,8 +35,9 @@ const dbItems = homestays.map((stay) => {
     state: stay.state,
     score: hScore.score,
     evidenceCount: hScore.evidenceCount,
-    text: stay.latestReview || guestReviews[0]?.summary || mentions[0]?.summary || publicReviews[0]?.summary || '',
-    textCount: stay.reviewCount + guestReviews.length + mentions.length + publicReviews.length
+    text: ownText || rawReviews[0]?.text || '',
+    textSource: ownText ? 'HomestayReview.my' : (rawReviews[0]?.sourceLabel || ''),
+    textCount: stay.reviewCount + rawReviews.length
   };
 });
 
@@ -47,15 +45,14 @@ const knownSlugs = new Set(dbItems.map((item) => item.slug));
 const communityItems = COMMUNITY_LISTINGS
   .filter((item) => !knownSlugs.has(item.slug))
   .map((item) => {
-    const mentions = getVerifiedSocialMentions(item.slug);
-    const guestReviews = getExpandedPublicGuestReviews2(item.slug);
-    const publicReviews = getPublicReviewSnippets(item.slug);
+    const rawReviews = getRawPublicReviews(item.slug);
     return {
       ...item,
       score: null as number | null,
       evidenceCount: 0,
-      text: guestReviews[0]?.summary || mentions[0]?.summary || publicReviews[0]?.summary || '',
-      textCount: guestReviews.length + mentions.length + publicReviews.length
+      text: rawReviews[0]?.text || '',
+      textSource: rawReviews[0]?.sourceLabel || '',
+      textCount: rawReviews.length
     };
   });
 
@@ -64,7 +61,7 @@ const rankedHomestays = [...dbItems, ...communityItems]
 const states = [...new Set(rankedHomestays.map((stay) => stay.state))].sort();
 ---
 
-<BaseLayout wide map title="HomestayReview.my">
+<BaseLayout wide title="HomestayReview.my">
   <div class="hlist-app">
     <section class="hlist-topline compact-topline">
       <div class="hlist-pitch"><h1>Homestays in Malaysia</h1></div>
@@ -96,8 +93,8 @@ const states = [...new Set(rankedHomestays.map((stay) => stay.state))].sort();
         <div id="listingFeed" class="hlist-list">
           {rankedHomestays.map((stay, index) => (
             <a class="hlist-card lean-card" href={`/homestay/${stay.slug}`}
-              data-slug={stay.slug} data-name={stay.name.toLowerCase()} data-display-name={stay.name}
-              data-city={stay.city.toLowerCase()} data-city-display={stay.city} data-state={stay.state}
+              data-name={stay.name.toLowerCase()} data-display-name={stay.name}
+              data-city={stay.city.toLowerCase()} data-state={stay.state}
               data-score={stay.score || 0} data-evidence={stay.evidenceCount}>
               <div class="hlist-score"><strong>{stay.score ?? '—'}</strong><small>SCORE</small></div>
               <div class="hlist-card-copy">
@@ -109,6 +106,7 @@ const states = [...new Set(rankedHomestays.map((stay) => stay.state))].sort();
                 <div class="lean-meta">
                   {stay.evidenceCount > 0 && <strong>{stay.evidenceCount.toLocaleString()} reviews</strong>}
                   {stay.evidenceCount === 0 && stay.textCount > 0 && <strong>{stay.textCount} review{stay.textCount === 1 ? '' : 's'}</strong>}
+                  {stay.textSource && <span class="raw-source">VERBATIM · {stay.textSource}</span>}
                 </div>
                 {stay.text && <p class="hlist-blurb lean-review">“{stay.text}”</p>}
               </div>
@@ -119,11 +117,9 @@ const states = [...new Set(rankedHomestays.map((stay) => stay.state))].sort();
 
         <div id="emptyState" class="hlist-empty" hidden><strong>No matching homestays.</strong></div>
       </div>
-      <div class="hlist-map-wrap"><div id="homestayMap" aria-label="Map of homestay results"></div></div>
     </section>
   </div>
 
-  <script is:inline src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script is:inline>
     (() => {
       const searchInput=document.querySelector('#searchInput');
@@ -134,14 +130,24 @@ const states = [...new Set(rankedHomestays.map((stay) => stay.state))].sort();
       const count=document.querySelector('#resultCount');
       const empty=document.querySelector('#emptyState');
       const cards=Array.from(document.querySelectorAll('.hlist-card'));
-      const centers={'Johor':[1.74,103.55],'Kedah':[6.12,100.37],'Kelantan':[5.95,102.20],'Melaka':[2.20,102.25],'Negeri Sembilan':[2.73,101.94],'Pahang':[3.81,103.33],'Penang':[5.41,100.33],'Perak':[4.60,101.09],'Perlis':[6.44,100.20],'Sabah':[5.98,116.07],'Sarawak':[1.55,110.36],'Selangor':[3.07,101.52],'Terengganu':[5.31,103.13],'Kuala Lumpur':[3.14,101.69],'Putrajaya':[2.93,101.70],'Labuan':[5.28,115.23]};
-      const hash=(v)=>{let h=0;for(let i=0;i<v.length;i++)h=((h<<5)-h+v.charCodeAt(i))|0;return Math.abs(h)};
-      const coords=(card)=>{const c=centers[card.dataset.state]||[4.25,102];const h=hash(card.dataset.slug||'stay');const a=((h%360)*Math.PI)/180;const r=.05+((h%100)/100)*.12;return[c[0]+Math.sin(a)*r,c[1]+Math.cos(a)*r]};
-      let map=null;const markers=new Map();const layer=window.L?window.L.layerGroup():null;
-      if(window.L){map=window.L.map('homestayMap',{zoomControl:true,minZoom:3}).setView([4.2,109.2],5);window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; OpenStreetMap'}).addTo(map);layer.addTo(map);cards.forEach((card)=>{const score=Number(card.dataset.score||0);const icon=window.L.divIcon({className:'hlist-div-icon',html:`<div class="hlist-map-marker">${score||'•'}</div>`,iconSize:[42,28],iconAnchor:[21,14]});const marker=window.L.marker(coords(card),{icon});marker.bindPopup(`<div class="hlist-popup"><strong>${card.dataset.displayName||''}</strong><span>${card.dataset.cityDisplay||''}</span></div>`);markers.set(card.dataset.slug,marker)})}
-      const updateMap=(visible)=>{if(!map||!layer)return;layer.clearLayers();visible.forEach((card)=>{const marker=markers.get(card.dataset.slug);if(marker)layer.addLayer(marker)})};
-      const apply=()=>{const q=(searchInput?.value||'').trim().toLowerCase();const state=stateFilter?.value||'';const min=Number(scoreFilter?.value||0);const sort=sortFilter?.value||'score';const visible=cards.filter((card)=>{const hay=`${card.dataset.name||''} ${card.dataset.city||''} ${card.dataset.state||''}`.toLowerCase();const score=Number(card.dataset.score||0);return(!q||hay.includes(q))&&(!state||card.dataset.state===state)&&(!min||score>=min)});cards.forEach((card)=>card.hidden=!visible.includes(card));visible.sort((a,b)=>sort==='name'?(a.dataset.displayName||'').localeCompare(b.dataset.displayName||''):sort==='reviews'?Number(b.dataset.evidence||0)-Number(a.dataset.evidence||0):Number(b.dataset.score||0)-Number(a.dataset.score||0));visible.forEach((card)=>feed?.appendChild(card));if(count)count.textContent=String(visible.length);if(empty)empty.hidden=visible.length!==0;updateMap(visible)};
-      [searchInput,stateFilter,scoreFilter,sortFilter].forEach((el)=>el?.addEventListener(el===searchInput?'input':'change',apply));apply();
+      const apply=()=>{
+        const q=(searchInput?.value||'').trim().toLowerCase();
+        const state=stateFilter?.value||'';
+        const min=Number(scoreFilter?.value||0);
+        const sort=sortFilter?.value||'score';
+        const visible=cards.filter((card)=>{
+          const hay=`${card.dataset.name||''} ${card.dataset.city||''} ${card.dataset.state||''}`.toLowerCase();
+          const score=Number(card.dataset.score||0);
+          return(!q||hay.includes(q))&&(!state||card.dataset.state===state)&&(!min||score>=min);
+        });
+        cards.forEach((card)=>card.hidden=!visible.includes(card));
+        visible.sort((a,b)=>sort==='name'?(a.dataset.displayName||'').localeCompare(b.dataset.displayName||''):sort==='reviews'?Number(b.dataset.evidence||0)-Number(a.dataset.evidence||0):Number(b.dataset.score||0)-Number(a.dataset.score||0));
+        visible.forEach((card)=>feed?.appendChild(card));
+        if(count)count.textContent=String(visible.length);
+        if(empty)empty.hidden=visible.length!==0;
+      };
+      [searchInput,stateFilter,scoreFilter,sortFilter].forEach((el)=>el?.addEventListener(el===searchInput?'input':'change',apply));
+      apply();
     })();
   </script>
 </BaseLayout>
