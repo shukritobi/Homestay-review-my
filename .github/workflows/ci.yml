@@ -108,6 +108,22 @@ jobs:
           assert reviews == 0, f'Seed must contain zero HomestayReview reviews, found {reviews}'
           print(f'Validated {listings} listings, {google_listings} Google-reference listings and {reviews} seeded reviews')
           PY
+      - name: Verify top-100 public review coverage
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          ids = set()
+          for path in Path('src/data').glob('publicReviews*.ts'):
+              text = path.read_text()
+              ids.update(int(match) for match in re.findall(r"'google-top-(\d{3})'\s*:", text))
+
+          expected = set(range(1, 101))
+          missing = sorted(expected - ids)
+          assert not missing, f'Missing public review summaries for top-100 IDs: {missing}'
+          print(f'Validated public review summary coverage for all {len(expected)} top listings')
+          PY
       - name: Build Cloudflare Worker
         run: npm run build
       - name: Prepare local D1 for runtime smoke test
