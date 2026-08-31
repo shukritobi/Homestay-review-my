@@ -1,0 +1,60 @@
+/* Directory is intentionally list-first. The map UI has been removed. */
+.hlist-app {
+  min-height: calc(100vh - 54px);
+  overflow: visible;
+}
+
+.hlist-main {
+  display: block;
+  min-height: 0;
+  background: #fff;
+}
+
+.hlist-results {
+  width: min(100%, 1100px);
+  min-height: 0;
+  margin: 0 auto;
+  overflow: visible;
+  border-right: 0;
+}
+
+.hlist-results-head {
+  position: static;
+}
+
+.hlist-map-wrap,
+#homestayMap {
+  display: none !important;
+}
+
+.raw-source {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  color: #696b64;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .055em;
+}
+
+.raw-review-card p {
+  white-space: pre-wrap;
+}
+
+.raw-empty-state p {
+  max-width: 620px;
+  margin: 8px 0 16px;
+  color: #6c6e66;
+  line-height: 1.55;
+}
+
+@media (max-width: 700px) {
+  .hlist-results {
+    width: 100%;
+  }
+
+  .raw-source {
+    margin-left: 0;
+    margin-top: 4px;
+  }
+}
