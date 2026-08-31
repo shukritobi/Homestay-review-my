@@ -89,7 +89,7 @@ const formatDate = (value?: string | null) => value ? new Intl.DateTimeFormat('e
         {mentions.map((mention) => (
           <article class="lean-review-card community-card">
             <div class="lean-review-head"><span>{formatDate(mention.postedAt)}</span></div>
-            <p>“{mention.summary}”</p>
+            <p>{mention.summary}</p>
             <div class="lean-review-author"><strong>{mention.author}</strong></div>
           </article>
         ))}
@@ -97,7 +97,7 @@ const formatDate = (value?: string | null) => value ? new Intl.DateTimeFormat('e
         {publicReviews.map((review) => (
           <article class="lean-review-card community-card">
             {review.postedAt && <div class="lean-review-head"><span>{formatDate(review.postedAt)}</span></div>}
-            <p>“{review.summary}”</p>
+            <p>{review.summary}</p>
             {review.author && <div class="lean-review-author"><strong>{review.author}</strong></div>}
           </article>
         ))}
