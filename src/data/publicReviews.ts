@@ -55,11 +55,44 @@ export const PUBLIC_REVIEW_SNIPPETS: Record<string, PublicReviewSnippet[]> = {
       sourceUrl: 'https://www.booking.com/reviews/my/hotel/sembilan-langkawi.en-gb.html'
     }
   ],
+  'google-top-019': [
+    {
+      summary: 'Guests consistently praise the cleanliness, comfort and well-equipped setup. The host and location are also repeatedly rated highly.',
+      sourceUrl: 'https://www.agoda.com/wakaf-homestay-rukaiyah-al-mansouri/hotel/mersing-my.html'
+    }
+  ],
+  'google-top-020': [
+    {
+      summary: 'Good value with a convenient location and practical room setup. Bathroom fixtures and maintenance were the main issues raised in a recent stay.',
+      postedAt: '2026-01-24',
+      sourceUrl: 'https://www.booking.com/reviews/my/hotel/hb73-cyberjaya-netflix-wi-fi-parking-pool-cyberjaya.en-gb.html'
+    }
+  ],
+  'google-top-024': [
+    {
+      summary: 'Clean, comfortable and very convenient for KSL Mall, with easy self check-in and helpful hosts. Families and groups regularly mention the spacious layout.',
+      postedAt: '2025-06-03',
+      sourceUrl: 'https://www.agoda.com/en-sg/ksl-city-mall-7-8pax-netflix-smarttv-65inch-k23/hotel/johor-bahru-my.html'
+    }
+  ],
+  'google-top-025': [
+    {
+      summary: 'Clean apartment in a strategic city location with useful facilities and helpful management. Guests particularly like the sea-view and private-jacuzzi setup.',
+      sourceUrl: 'https://www.booking.com/hotel/my/mwholidaya2713-skygalaxy-privatejacuzzi-seavilla.html'
+    }
+  ],
   'google-top-028': [
     {
       summary: 'Super clean, well-equipped and easy to check in. Guests also like the short drive to the beach and Mersing jetty.',
       postedAt: '2026-06-09',
       sourceUrl: 'https://www.agoda.com/en-us/homestay-mersing-anid-d-lautan-biru/hotel/mersing-my.html'
+    }
+  ],
+  'google-top-030': [
+    {
+      summary: 'Good location and suitable for families. Guests have flagged small practical issues such as needing another access card, missing toiletries and occasional streaming problems.',
+      postedAt: '2026-04-19',
+      sourceUrl: 'https://www.booking.com/reviews/my/hotel/riverview-8pax-2br-in-kbtown-wi-fi-a-10-7.html'
     }
   ],
   'google-top-033': [
@@ -74,6 +107,26 @@ export const PUBLIC_REVIEW_SNIPPETS: Record<string, PublicReviewSnippet[]> = {
       sourceUrl: 'https://www.booking.com/reviews/my/hotel/sweet-loft-homestay.html'
     }
   ],
+  'google-top-037': [
+    {
+      summary: 'Very clean and well maintained with a welcoming host and plenty of group activities such as swimming and karaoke. Guests also like the open space.',
+      sourceUrl: 'https://www.booking.com/hotel/my/tranquil-arcadia-homestay-by-desaru-bandar-penawar.html'
+    }
+  ],
+  'google-top-039': [
+    {
+      summary: 'Repeatedly praised for exceptional cleanliness, mountain views and a friendly responsive host. Guests also like the modern facilities and clear check-in instructions.',
+      postedAt: '2025-06-24',
+      sourceUrl: 'https://wanderlog.com/place/details/9246236/blissful-homestay-horizon-ipoh'
+    }
+  ],
+  'google-top-042': [
+    {
+      summary: 'Clean, spacious and comfortable for extended families, with an easy check-in and useful kitchen facilities. Most nearby food and shopping is easier by car.',
+      postedAt: '2024-02-14',
+      sourceUrl: 'https://www.agoda.com/glenmarie-austin-20pax-mount-austin-family-stay/hotel/johor-bahru-my.html'
+    }
+  ],
   'google-top-043': [
     {
       summary: 'Clean, complete and comfortable for large families, with a responsive owner and plenty of facilities. Several guests said they would stay again.',
@@ -85,6 +138,12 @@ export const PUBLIC_REVIEW_SNIPPETS: Record<string, PublicReviewSnippet[]> = {
     {
       summary: 'Guests consistently highlight the spacious house, cleanliness and family-friendly setup. Hospitality and comfort are among the most-mentioned positives.',
       sourceUrl: 'https://www.airbnb.com.my/rooms/1297100867397235998'
+    }
+  ],
+  'google-top-048': [
+    {
+      summary: 'Strong value for large groups with helpful hosts and plenty of facilities. Feedback is mostly positive, though cleanliness and kid-friendliness were mixed in a small number of comments.',
+      sourceUrl: 'https://www.agoda.com/en-us/party-haus/hotel/johor-bahru-my.html'
     }
   ],
   'google-top-059': [
