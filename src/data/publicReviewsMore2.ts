@@ -1,0 +1,75 @@
+import type { PublicReviewSnippet } from './publicReviews';
+
+export const PUBLIC_REVIEW_SNIPPETS_MORE_2: Record<string, PublicReviewSnippet[]> = {
+  'google-top-003': [
+    {
+      summary: 'Cleanliness, service, facilities and location are consistently strong, with guests frequently describing the rooms as spotless and well maintained.',
+      sourceUrl: 'https://www.agoda.com/en-us/central-residence-libertyhomestay-kuala-lumpur/hotel/kuala-lumpur-my.html'
+    }
+  ],
+  'google-top-005': [
+    {
+      summary: 'Spacious, clean rooms, comfortable beds and good views make it popular with families. Some stays mention strict check-in rules, weak Wi-Fi, limited room basics and occasional mould or bathroom smells.',
+      postedAt: '2026-06-19',
+      sourceUrl: 'https://www.agoda.com/en-gb/windmill-upon-hills-serenity-retreat-genting/hotel/genting-highlands-my.html'
+    }
+  ],
+  'google-top-013': [
+    {
+      summary: 'Strategic location near Kea Farm, clean rooms, working Wi-Fi and Netflix, useful pool and gym access, and responsive staff. Bathroom cleanliness is the main improvement mentioned.',
+      postedAt: '2026-07-09',
+      sourceUrl: 'https://www.agoda.com/equatorial-hill-resort-copthorne/hotel/cameron-highlands-my.html'
+    }
+  ],
+  'google-top-032': [
+    {
+      summary: 'Very clean, spacious and comfortable for groups, with easy parking and check-in, big rooms and a convenient location. A few guests would prefer fans in addition to air-conditioning.',
+      postedAt: '2026-08-04',
+      sourceUrl: 'https://www.agoda.com/th-ipoh-homestay-simee-10pax-8mins-to-attraction/hotel/ipoh-my.html'
+    }
+  ],
+  'google-top-038': [
+    {
+      summary: 'Large, clean and comfortable for big families, with straightforward check-in, useful amenities and a convenient Ipoh location. Guests repeatedly call it good value.',
+      postedAt: '2026-06-15',
+      sourceUrl: 'https://www.agoda.com/en-in/unnamed-property-h35742905/hotel/ipoh-my.html'
+    }
+  ],
+  'google-top-066': [
+    {
+      summary: 'The five-bedroom bungalow has plenty of space for large groups, but public guest scores are much more mixed for cleanliness, comfort, facilities and value than its headline rating suggests.',
+      sourceUrl: 'https://www.booking.com/hotel/my/ipoh-stadium-1min-wahkeongpark-simee-18pax-bungalow-cottage.html'
+    }
+  ],
+  'google-top-081': [
+    {
+      summary: 'Very central and good value, with a comfortable room and useful parking. Some stays report weak lighting, dusty kitchen areas, occasional pests and a dark basement parking area.',
+      sourceUrl: 'https://hotelandplace.com/hotel/nazrins-homes-kbcp'
+    }
+  ],
+  'google-top-082': [
+    {
+      summary: 'Clean, spacious and comfortable for families, with complete basic facilities and a kind, responsive owner. Guests also like the quiet setting and proximity to HUSM.',
+      sourceUrl: 'https://www.booking.com/hotel/my/raihan-homestay-kubang-kerian-kota-bharu1.en-gb.html'
+    }
+  ],
+  'google-top-086': [
+    {
+      summary: 'The bungalow is very large with plenty of parking, but one detailed group stay reported a last-minute deposit, faulty electricity, poor water pressure, bad odours, dirty utensils and several non-working facilities.',
+      postedAt: '2023-09-30',
+      sourceUrl: 'https://www.agoda.com/en-nz/klcc-view-bungalow-for-party/hotel/kuala-lumpur-my.html'
+    }
+  ],
+  'google-top-090': [
+    {
+      summary: 'A very small guest sample rates the four-bedroom house highly for cleanliness, comfort, value and location, with practical facilities for larger groups.',
+      sourceUrl: 'https://www.booking.com/hotel/my/t-amp-t-kuching-homestay.en-gb.html'
+    }
+  ],
+  'google-top-100': [
+    {
+      summary: 'Guests particularly like the spacious layout, smooth check-in and convenient location. Cleanliness, host communication and value also score very highly across a large guest sample.',
+      sourceUrl: 'https://www.airbnb.com/rooms/637354531730335685'
+    }
+  ]
+};
