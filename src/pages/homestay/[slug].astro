@@ -5,9 +5,7 @@ import { getHomestayBySlug } from '../../lib/db';
 import { calculateHomestayScore } from '../../lib/score';
 import { getAdditionalScoreSources } from '../../data/externalRatings';
 import { getCommunityListing } from '../../data/communityListings';
-import { getVerifiedSocialMentions } from '../../data/socialMentions';
-import { getPublicReviewSnippets } from '../../data/publicReviews';
-import { getExpandedPublicGuestReviews2 } from '../../data/publicGuestReviewsExpanded2';
+import { getRawPublicReviews } from '../../data/rawPublicReviews';
 
 const db = env.DB;
 const slug = Astro.params.slug || '';
@@ -25,9 +23,7 @@ if (!exists) Astro.response.status = 404;
 const name = stay?.name || community?.name || '';
 const city = stay?.city || community?.city || '';
 const state = stay?.state || community?.state || '';
-const mentions = exists ? getVerifiedSocialMentions(slug) : [];
-const guestReviews = exists ? getExpandedPublicGuestReviews2(slug) : [];
-const publicReviews = exists && guestReviews.length === 0 ? getPublicReviewSnippets(slug) : [];
+const rawReviews = exists ? getRawPublicReviews(slug) : [];
 const hScore = stay ? calculateHomestayScore({
   homestayReviewRating: stay.averageRating,
   homestayReviewCount: stay.reviewCount,
@@ -37,7 +33,7 @@ const hScore = stay ? calculateHomestayScore({
 }) : null;
 const evidenceCount = hScore?.evidenceCount || 0;
 const ownReviews = stay?.reviews || [];
-const fallbackReviewCount = mentions.length + guestReviews.length + publicReviews.length;
+const fallbackReviewCount = rawReviews.length;
 const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const formatStay = (month: number | null, year: number | null) => {
   if (!year) return '';
@@ -88,35 +84,23 @@ const formatDate = (value?: string | null) => value ? new Intl.DateTimeFormat('e
           </article>
         ))}
 
-        {guestReviews.map((review) => (
-          <article class="lean-review-card community-card">
-            {review.postedAt && <div class="lean-review-head"><span>{formatDate(review.postedAt)}</span></div>}
-            <p>{review.summary}</p>
+        {rawReviews.map((review) => (
+          <article class="lean-review-card raw-review-card">
+            <div class="lean-review-head">
+              <span>{review.postedAt ? formatDate(review.postedAt) : 'Date not available'}</span>
+              <span class="raw-source">VERBATIM · {review.sourceLabel}</span>
+            </div>
+            <p>“{review.text}”</p>
             <div class="lean-review-author">
               <a href={review.sourceUrl} target="_blank" rel="nofollow noopener"><strong>{review.author}</strong></a>
             </div>
           </article>
         ))}
 
-        {mentions.map((mention) => (
-          <article class="lean-review-card community-card">
-            <div class="lean-review-head"><span>{formatDate(mention.postedAt)}</span></div>
-            <p>{mention.summary}</p>
-            <div class="lean-review-author"><strong>{mention.author}</strong></div>
-          </article>
-        ))}
-
-        {publicReviews.map((review) => (
-          <article class="lean-review-card community-card">
-            {review.postedAt && <div class="lean-review-head"><span>{formatDate(review.postedAt)}</span></div>}
-            <p>{review.summary}</p>
-            {review.author && <div class="lean-review-author"><strong>{review.author}</strong></div>}
-          </article>
-        ))}
-
-        {ownReviews.length === 0 && guestReviews.length === 0 && mentions.length === 0 && publicReviews.length === 0 && (
-          <div class="lean-no-review">
-            <strong>No written reviews yet.</strong>
+        {ownReviews.length === 0 && rawReviews.length === 0 && (
+          <div class="lean-no-review raw-empty-state">
+            <strong>No raw review text verified yet.</strong>
+            <p>Ratings may exist, but we do not have a verbatim public review excerpt from a source we can verify. We will not fill this space with a summary.</p>
             <a class="button button-dark button-small" href={`/review/submit${stay ? `?id=${stay.id}&stay=${encodeURIComponent(name)}` : `?stay=${encodeURIComponent(name)}`}`}>Write the first review</a>
           </div>
         )}
