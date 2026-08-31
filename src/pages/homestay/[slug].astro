@@ -66,7 +66,7 @@ const formatDate = (value: string | null) => value ? new Intl.DateTimeFormat('en
 
       <div class="lean-count-row">
         {evidenceCount > 0 && <strong>{evidenceCount.toLocaleString()} reviews</strong>}
-        {evidenceCount === 0 && mentions.length > 0 && <strong>{mentions.length} mention{mentions.length === 1 ? '' : 's'}</strong>}
+        {evidenceCount === 0 && mentions.length > 0 && <strong>{mentions.length} review{mentions.length === 1 ? '' : 's'}</strong>}
         <a href={`/review/submit${stay ? `?id=${stay.id}&stay=${encodeURIComponent(name)}` : `?stay=${encodeURIComponent(name)}`}`}>+ Write a review</a>
       </div>
 
@@ -79,19 +79,18 @@ const formatDate = (value: string | null) => value ? new Intl.DateTimeFormat('en
             </div>
             <h2>{review.title}</h2>
             <p>“{review.body}”</p>
-            <div class="lean-review-author"><strong>{review.author}</strong><span>Verified review</span></div>
+            <div class="lean-review-author"><strong>{review.author}</strong></div>
           </article>
         ))}
 
         {mentions.map((mention) => (
           <article class="lean-review-card community-card">
             <div class="lean-review-head">
-              <span>Community mention</span>
               <span>{formatDate(mention.postedAt)}</span>
             </div>
             <p>“{mention.summary}”</p>
             <div class="lean-review-author">
-              <a href={mention.profileUrl} target="_blank" rel="nofollow noopener"><strong>@{mention.author}</strong></a>
+              <a href={mention.profileUrl} target="_blank" rel="nofollow noopener"><strong>{mention.author}</strong></a>
             </div>
           </article>
         ))}
