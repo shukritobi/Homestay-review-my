@@ -1,69 +1,16 @@
 import type { PublicReviewSnippet } from './publicReviews';
+import { PUBLIC_REVIEW_SNIPPETS_MORE_2 } from './publicReviewsMore2';
 
 export const PUBLIC_REVIEW_SNIPPETS_MORE: Record<string, PublicReviewSnippet[]> = {
-  'google-top-008': [
-    {
-      summary: 'Guests repeatedly describe the apartment as clean, spacious and convenient, with smooth check-in, useful facilities and two parking spaces. Several say they would stay again.',
-      postedAt: '2026-06-05',
-      sourceUrl: 'https://www.agoda.com/exclusive-3-bedroom-homestay-kuala-lumpur/hotel/kuala-lumpur-my.html'
-    }
-  ],
-  'google-top-010': [
-    {
-      summary: 'The location and pool are strong points and the overall score is high, but guest feedback is much more mixed on check-in, parking, host communication, room comfort and in-room amenities.',
-      sourceUrl: 'https://www.agoda.com/cyberjaya-sanitized-unit-netflix-wifi-parking-3027/reviews/kuala-lumpur-my.html'
-    }
-  ],
-  'google-top-015': [
-    {
-      summary: 'Easy self check-in, a clean comfortable studio and a strong sea view are recurring positives. Guests also like parking directly by the unit and the responsive host; some mention limited in-room extras.',
-      postedAt: '2026-06-22',
-      sourceUrl: 'https://www.agoda.com/best-moments-studio-balcony-imperium-resident/hotel/kuantan-my.html'
-    }
-  ],
-  'google-top-021': [
-    {
-      summary: 'Very clean, comfortable and centrally located, with clear check-in instructions and a responsive host. Guests also praise the facilities, parking and easy access to food and shops.',
-      sourceUrl: 'https://www.agoda.com/ru-ru/golden-troika-kota-bharu-2-bedrooms/reviews/kota-bharu-my.html'
-    }
-  ],
-  'google-top-022': [
-    {
-      summary: 'Excellent location above Imago Mall, clean spacious rooms and helpful staff make it practical for families and groups. A few stays mention ageing furniture, air-conditioning or shower drainage issues.',
-      postedAt: '2026-07-15',
-      sourceUrl: 'https://www.agoda.com/rasa-sayang-at-the-loft-imago/hotel/kota-kinabalu-my.html'
-    }
-  ],
-  'google-top-026': [
-    {
-      summary: 'Well-maintained, clean and convenient for families, with responsive management and direct access to Vivacity shops and food. Small drawbacks include thin blankets and one room with too much morning light.',
-      postedAt: '2026-02-18',
-      sourceUrl: 'https://www.agoda.com/en-in/sy-vivacity-homestay-service-apartment/hotel/kuching-my.html'
-    }
-  ],
-  'google-top-040': [
-    {
-      summary: 'Very spacious for large family groups, with a private pool and plenty of room to gather. Guest scores are positive overall, but cleanliness is noticeably less consistent than the other categories.',
-      sourceUrl: 'https://www.agoda.com/ria-homestay/hotel/johor-bahru-my.html'
-    }
-  ],
-  'google-top-045': [
-    {
-      summary: 'Guests describe it as clean, big, fully furnished and comfortable, with good service, useful facilities and strong value for family or group trips.',
-      sourceUrl: 'https://wanderlog.com/place/details/12268844/homestay-langkawi-by-langkawigo'
-    }
-  ],
-  'google-top-051': [
-    {
-      summary: 'Exceptionally clean and spacious with complete facilities, a pool and strong value for large families or groups. Public guest feedback is consistently enthusiastic.',
-      sourceUrl: 'https://www.agoda.com/6-bedroom-7-bathroom-bungalow-in-langkawi/hotel/langkawi-my.html'
-    }
-  ],
-  'google-top-058': [
-    {
-      summary: 'Comfortable and clean with strong air-conditioning, a convenient location and an easy-to-deal-with host. The pool is a plus, although ratings on value and upkeep are more mixed across platforms.',
-      postedAt: '2025-02-02',
-      sourceUrl: 'https://www.agoda.com/amjad-homestay/hotel/kota-bharu-my.html'
-    }
-  ]
+  'google-top-008': [{ summary: 'Guests repeatedly describe the apartment as clean, spacious and convenient, with smooth check-in, useful facilities and two parking spaces. Several say they would stay again.', postedAt: '2026-06-05', sourceUrl: 'https://www.agoda.com/exclusive-3-bedroom-homestay-kuala-lumpur/hotel/kuala-lumpur-my.html' }],
+  'google-top-010': [{ summary: 'The location and pool are strong points and the overall score is high, but guest feedback is much more mixed on check-in, parking, host communication, room comfort and in-room amenities.', sourceUrl: 'https://www.agoda.com/cyberjaya-sanitized-unit-netflix-wifi-parking-3027/reviews/kuala-lumpur-my.html' }],
+  'google-top-015': [{ summary: 'Easy self check-in, a clean comfortable studio and a strong sea view are recurring positives. Guests also like parking directly by the unit and the responsive host; some mention limited in-room extras.', postedAt: '2026-06-22', sourceUrl: 'https://www.agoda.com/best-moments-studio-balcony-imperium-resident/hotel/kuantan-my.html' }],
+  'google-top-021': [{ summary: 'Very clean, comfortable and centrally located, with clear check-in instructions and a responsive host. Guests also praise the facilities, parking and easy access to food and shops.', sourceUrl: 'https://www.agoda.com/ru-ru/golden-troika-kota-bharu-2-bedrooms/reviews/kota-bharu-my.html' }],
+  'google-top-022': [{ summary: 'Excellent location above Imago Mall, clean spacious rooms and helpful staff make it practical for families and groups. A few stays mention ageing furniture, air-conditioning or shower drainage issues.', postedAt: '2026-07-15', sourceUrl: 'https://www.agoda.com/rasa-sayang-at-the-loft-imago/hotel/kota-kinabalu-my.html' }],
+  'google-top-026': [{ summary: 'Well-maintained, clean and convenient for families, with responsive management and direct access to Vivacity shops and food. Small drawbacks include thin blankets and one room with too much morning light.', postedAt: '2026-02-18', sourceUrl: 'https://www.agoda.com/en-in/sy-vivacity-homestay-service-apartment/hotel/kuching-my.html' }],
+  'google-top-040': [{ summary: 'Very spacious for large family groups, with a private pool and plenty of room to gather. Guest scores are positive overall, but cleanliness is noticeably less consistent than the other categories.', sourceUrl: 'https://www.agoda.com/ria-homestay/hotel/johor-bahru-my.html' }],
+  'google-top-045': [{ summary: 'Guests describe it as clean, big, fully furnished and comfortable, with good service, useful facilities and strong value for family or group trips.', sourceUrl: 'https://wanderlog.com/place/details/12268844/homestay-langkawi-by-langkawigo' }],
+  'google-top-051': [{ summary: 'Exceptionally clean and spacious with complete facilities, a pool and strong value for large families or groups. Public guest feedback is consistently enthusiastic.', sourceUrl: 'https://www.agoda.com/6-bedroom-7-bathroom-bungalow-in-langkawi/hotel/langkawi-my.html' }],
+  'google-top-058': [{ summary: 'Comfortable and clean with strong air-conditioning, a convenient location and an easy-to-deal-with host. The pool is a plus, although ratings on value and upkeep are more mixed across platforms.', postedAt: '2025-02-02', sourceUrl: 'https://www.agoda.com/amjad-homestay/hotel/kota-bharu-my.html' }],
+  ...PUBLIC_REVIEW_SNIPPETS_MORE_2
 };
