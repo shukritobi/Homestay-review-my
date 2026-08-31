@@ -7,7 +7,7 @@ import { getAdditionalScoreSources } from '../data/externalRatings';
 import { COMMUNITY_LISTINGS } from '../data/communityListings';
 import { getVerifiedSocialMentions } from '../data/socialMentions';
 import { getPublicReviewSnippets } from '../data/publicReviews';
-import { getPublicGuestReviews } from '../data/publicGuestReviews';
+import { getExpandedPublicGuestReviews } from '../data/publicGuestReviewsExpanded';
 
 const db = env.DB;
 let homestays: Awaited<ReturnType<typeof listHomestays>> = [];
@@ -29,7 +29,7 @@ const dbItems = homestays.map((stay) => {
     additionalSources: getAdditionalScoreSources(stay.slug)
   });
   const mentions = getVerifiedSocialMentions(stay.slug);
-  const guestReviews = getPublicGuestReviews(stay.slug);
+  const guestReviews = getExpandedPublicGuestReviews(stay.slug);
   const publicReviews = getPublicReviewSnippets(stay.slug);
   return {
     name: stay.name,
@@ -48,7 +48,7 @@ const communityItems = COMMUNITY_LISTINGS
   .filter((item) => !knownSlugs.has(item.slug))
   .map((item) => {
     const mentions = getVerifiedSocialMentions(item.slug);
-    const guestReviews = getPublicGuestReviews(item.slug);
+    const guestReviews = getExpandedPublicGuestReviews(item.slug);
     const publicReviews = getPublicReviewSnippets(item.slug);
     return {
       ...item,
