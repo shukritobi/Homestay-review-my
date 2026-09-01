@@ -1,6 +1,7 @@
 ---
 import { env } from 'cloudflare:workers';
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import SocialLinks from '../../components/SocialLinks.astro';
 import { getHomestayBySlug } from '../../lib/db';
 import { calculateHomestayScore } from '../../lib/score';
 import { getAdditionalScoreSources } from '../../data/externalRatings';
@@ -70,6 +71,8 @@ const formatDate = (value?: string | null) => value ? new Intl.DateTimeFormat('e
         {evidenceCount === 0 && fallbackReviewCount > 0 && <strong>{fallbackReviewCount} review{fallbackReviewCount === 1 ? '' : 's'}</strong>}
         <a href={`/review/submit${stay ? `?id=${stay.id}&stay=${encodeURIComponent(name)}` : `?stay=${encodeURIComponent(name)}`}`}>+ Write a review</a>
       </div>
+
+      <SocialLinks slug={slug} />
 
       <div class="lean-review-list">
         {ownReviews.map((review) => (
