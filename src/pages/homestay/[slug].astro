@@ -70,6 +70,18 @@ const formatDate = (value?: string | null) => value ? new Intl.DateTimeFormat('e
         </div>
       </div>
 
+      <div class="lean-detail-photo">
+        <img
+          src={`/img/${slug}?size=hero`}
+          alt={`${name} property photo`}
+          width="720"
+          height="420"
+          loading="lazy"
+          decoding="async"
+          onerror="this.parentElement.remove()"
+        />
+      </div>
+
       <div class="lean-count-row">
         {evidenceCount > 0 && <strong>{evidenceCount.toLocaleString()} reviews</strong>}
         {evidenceCount === 0 && fallbackReviewCount > 0 && <strong>{fallbackReviewCount} review{fallbackReviewCount === 1 ? '' : 's'}</strong>}
@@ -98,7 +110,7 @@ const formatDate = (value?: string | null) => value ? new Intl.DateTimeFormat('e
                 {review.rating && <span class="stars raw-review-stars" aria-label={`${review.rating} out of 5`}>{'★'.repeat(review.rating)}{'☆'.repeat(5-review.rating)}</span>}
                 <span>{review.dateLabel || (review.postedAt ? formatDate(review.postedAt) : 'Date not available')}</span>
               </div>
-              <a class="raw-source" href={review.sourceUrl} target="_blank" rel="nofollow noopener">VERBATIM · {review.sourceLabel}</a>
+              <a class="raw-source" href={review.sourceUrl} target="_blank" rel="nofollow noopener">{review.sourceLabel}</a>
             </div>
             <p class="raw-review-text">“{review.text}”</p>
             <div class="lean-review-author">
@@ -109,8 +121,8 @@ const formatDate = (value?: string | null) => value ? new Intl.DateTimeFormat('e
 
         {ownReviews.length === 0 && rawReviews.length === 0 && (
           <div class="lean-no-review raw-empty-state">
-            <strong>No raw review text verified yet.</strong>
-            <p>Ratings may exist, but we do not have a verbatim public review excerpt from a source we can verify. We will not fill this space with a summary.</p>
+            <strong>No guest review text available yet.</strong>
+            <p>Ratings may exist, but we do not yet have a guest review from a source we can link to.</p>
             <a class="button button-dark button-small" href={`/review/submit${stay ? `?id=${stay.id}&stay=${encodeURIComponent(name)}` : `?stay=${encodeURIComponent(name)}`}`}>Write the first review</a>
           </div>
         )}
