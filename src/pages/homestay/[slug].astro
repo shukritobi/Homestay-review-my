@@ -72,7 +72,7 @@ const formatDate = (value?: string | null) => value ? new Intl.DateTimeFormat('e
         <a href={`/review/submit${stay ? `?id=${stay.id}&stay=${encodeURIComponent(name)}` : `?stay=${encodeURIComponent(name)}`}`}>+ Write a review</a>
       </div>
 
-      <SocialLinks slug={slug} />
+      <SocialLinks slug={slug} compact />
 
       <div class="lean-review-list">
         {ownReviews.map((review) => (
