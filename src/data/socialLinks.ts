@@ -1,4 +1,4 @@
-export type SocialPlatform = 'facebook' | 'instagram' | 'tiktok' | 'threads';
+export type SocialPlatform = 'facebook' | 'instagram' | 'tiktok' | 'threads' | 'airbnb';
 
 export type HomestaySocialLink = {
   platform: SocialPlatform;
@@ -6,12 +6,15 @@ export type HomestaySocialLink = {
   account?: string;
 };
 
-// Property/operator social pages that were matched to a specific listing.
+// Property/operator public pages matched to a specific listing.
 // Deliberately omit a platform when the account could not be verified.
 export const HOMESTAY_SOCIAL_LINKS: Record<string, HomestaySocialLink[]> = {
   'google-top-002': [
     { platform: 'facebook', url: 'https://www.facebook.com/stayrene', account: 'Stayrene' },
     { platform: 'instagram', url: 'https://www.instagram.com/stayrenehomestay/', account: 'Stayrene' }
+  ],
+  'google-top-004': [
+    { platform: 'airbnb', url: 'https://www.airbnb.com/rooms/627430285062581362', account: 'Timber Homestay Mount Austin' }
   ],
   'google-top-005': [
     { platform: 'facebook', url: 'https://www.facebook.com/BYONGROUP', account: 'BYON' },
