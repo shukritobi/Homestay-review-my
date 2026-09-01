@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { getDirectPropertyImage, getPropertyImagePageCandidates } from '../../lib/listingImage';
+import { getDirectPropertyImage, getEmbeddedPropertyImage } from '../../lib/listingImage';
 
 export const prerender = false;
 
@@ -7,79 +7,6 @@ const PRESETS = {
   card: { width: 208, height: 156, quality: 52 },
   hero: { width: 720, height: 420, quality: 58 }
 } as const;
-
-const decodeHtml = (value: string) => value
-  .replace(/&amp;/g, '&')
-  .replace(/&quot;/g, '"')
-  .replace(/&#39;/g, "'")
-  .replace(/&lt;/g, '<')
-  .replace(/&gt;/g, '>');
-
-function extractPreviewImage(html: string, pageUrl: string): string | null {
-  const patterns = [
-    /<meta[^>]+property=["']og:image(?::secure_url)?["'][^>]+content=["']([^"']+)["'][^>]*>/i,
-    /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image(?::secure_url)?["'][^>]*>/i,
-    /<meta[^>]+name=["']twitter:image(?::src)?["'][^>]+content=["']([^"']+)["'][^>]*>/i,
-    /<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image(?::src)?["'][^>]*>/i
-  ];
-
-  for (const pattern of patterns) {
-    const match = html.match(pattern);
-    if (!match?.[1]) continue;
-    try {
-      const url = new URL(decodeHtml(match[1]), pageUrl);
-      if (url.protocol === 'http:' || url.protocol === 'https:') return url.toString();
-    } catch {
-      // Try the next metadata candidate.
-    }
-  }
-  return null;
-}
-
-async function readHead(response: Response, limit = 384 * 1024): Promise<string> {
-  if (!response.body) return '';
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let output = '';
-  let total = 0;
-
-  try {
-    while (total < limit) {
-      const { value, done } = await reader.read();
-      if (done || !value) break;
-      total += value.byteLength;
-      output += decoder.decode(value, { stream: true });
-      if (/<\/head>/i.test(output)) break;
-    }
-  } finally {
-    reader.cancel().catch(() => undefined);
-  }
-
-  return output;
-}
-
-async function discoverImage(pageUrl: string): Promise<string | null> {
-  try {
-    const response = await fetch(pageUrl, {
-      redirect: 'follow',
-      headers: {
-        'user-agent': 'Mozilla/5.0 (compatible; HomestayReview/1.0; +https://homestayreview.my)',
-        accept: 'text/html,application/xhtml+xml,image/avif,image/webp,image/*;q=0.8,*/*;q=0.5'
-      },
-      cf: { cacheTtl: 604800, cacheEverything: true }
-    } as RequestInit & { cf?: Record<string, unknown> });
-
-    if (!response.ok) return null;
-    const type = response.headers.get('content-type') || '';
-    if (type.startsWith('image/')) return response.url || pageUrl;
-    if (!type.includes('text/html') && !type.includes('application/xhtml+xml')) return null;
-
-    const head = await readHead(response);
-    return extractPreviewImage(head, response.url || pageUrl);
-  } catch {
-    return null;
-  }
-}
 
 function weservFallback(source: string, preset: (typeof PRESETS)[keyof typeof PRESETS]): string {
   const url = new URL('https://images.weserv.nl/');
@@ -92,24 +19,33 @@ function weservFallback(source: string, preset: (typeof PRESETS)[keyof typeof PR
   return url.toString();
 }
 
+function decodeBase64(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
 export const GET: APIRoute = async ({ params, request }) => {
   const slug = params.slug || '';
   const size = new URL(request.url).searchParams.get('size') === 'hero' ? 'hero' : 'card';
   const preset = PRESETS[size];
 
-  let source = getDirectPropertyImage(slug);
-  if (!source) {
-    const candidates = getPropertyImagePageCandidates(slug).slice(0, 5);
-    for (const candidate of candidates) {
-      source = await discoverImage(candidate);
-      if (source) break;
-    }
+  const embedded = getEmbeddedPropertyImage(slug);
+  if (embedded) {
+    return new Response(decodeBase64(embedded.base64), {
+      headers: {
+        'content-type': embedded.mime,
+        'cache-control': 'public, max-age=31536000, immutable'
+      }
+    });
   }
 
+  const source = getDirectPropertyImage(slug);
   if (!source) {
     return new Response(null, {
       status: 404,
-      headers: { 'cache-control': 'public, max-age=900' }
+      headers: { 'cache-control': 'public, max-age=3600' }
     });
   }
 
@@ -136,8 +72,7 @@ export const GET: APIRoute = async ({ params, request }) => {
       return new Response(transformed.body, { status: transformed.status, headers });
     }
   } catch {
-    // The public resize fallback below keeps this route working if remote
-    // origin restrictions have not yet been enabled in Cloudflare Images.
+    // Use the public resize/cache fallback below.
   }
 
   return Response.redirect(weservFallback(source, preset), 302);
