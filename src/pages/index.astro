@@ -6,6 +6,7 @@ import { calculateHomestayScore } from '../lib/score';
 import { getAdditionalScoreSources } from '../data/externalRatings';
 import { COMMUNITY_LISTINGS } from '../data/communityListings';
 import { getRawPublicReviews } from '../data/rawPublicReviews';
+import { hasPinnedPropertyImage } from '../lib/listingImage';
 
 const db = env.DB;
 let homestays: Awaited<ReturnType<typeof listHomestays>> = [];
@@ -37,7 +38,8 @@ const dbItems = homestays.map((stay) => {
     evidenceCount: hScore.evidenceCount,
     text: ownText || rawReviews[0]?.text || '',
     textSource: ownText ? 'HomestayReview.my' : (rawReviews[0]?.sourceLabel || ''),
-    textCount: stay.reviewCount + rawReviews.length
+    textCount: stay.reviewCount + rawReviews.length,
+    hasPhoto: hasPinnedPropertyImage(stay.slug)
   };
 });
 
@@ -52,7 +54,8 @@ const communityItems = COMMUNITY_LISTINGS
       evidenceCount: 0,
       text: rawReviews[0]?.text || '',
       textSource: rawReviews[0]?.sourceLabel || '',
-      textCount: rawReviews.length
+      textCount: rawReviews.length,
+      hasPhoto: hasPinnedPropertyImage(item.slug)
     };
   });
 
@@ -92,23 +95,24 @@ const states = [...new Set(rankedHomestays.map((stay) => stay.state))].sort();
 
         <div id="listingFeed" class="hlist-list">
           {rankedHomestays.map((stay, index) => (
-            <a class="hlist-card lean-card has-photo" href={`/homestay/${stay.slug}`}
+            <a class:list={['hlist-card', 'lean-card', stay.hasPhoto ? 'has-photo' : 'no-photo']} href={`/homestay/${stay.slug}`}
               data-name={stay.name.toLowerCase()} data-display-name={stay.name}
               data-city={stay.city.toLowerCase()} data-state={stay.state}
               data-score={stay.score || 0} data-evidence={stay.evidenceCount}>
               <div class="hlist-score"><strong>{stay.score ?? '—'}</strong><small>SCORE</small></div>
-              <div class="listing-thumb">
-                <img
-                  src={`/img/${stay.slug}?size=card`}
-                  alt=""
-                  width="104"
-                  height="78"
-                  loading="lazy"
-                  decoding="async"
-                  fetchpriority="low"
-                  onerror="this.parentElement.remove();this.closest('.hlist-card')?.classList.remove('has-photo')"
-                />
-              </div>
+              {stay.hasPhoto && (
+                <div class="listing-thumb">
+                  <img
+                    src={`/img/${stay.slug}?size=card`}
+                    alt=""
+                    width="104"
+                    height="78"
+                    loading="lazy"
+                    decoding="async"
+                    fetchpriority="low"
+                  />
+                </div>
+              )}
               <div class="hlist-card-copy">
                 <div class="hlist-card-top">
                   <span class="hlist-location">{stay.city} · {stay.state}</span>
