@@ -49,6 +49,9 @@ export const HOMESTAY_SOCIAL_LINKS: Record<string, HomestaySocialLink[]> = {
     { platform: 'facebook', url: 'https://www.facebook.com/Anjungpoolvilla/', account: 'Anjung Pool Villa' },
     { platform: 'instagram', url: 'https://www.instagram.com/anjungpoolvilla/', account: 'Anjung Pool Villa' }
   ],
+  'homestay-annur-kamunting': [
+    { platform: 'facebook', url: 'https://www.facebook.com/Homestay-An-Nur-Kamunting-Taiping-371447183321879', account: 'Homestay An-Nur Kamunting Taiping' }
+  ],
   'homestay-d-ledang-tangkak': [
     { platform: 'facebook', url: 'https://www.facebook.com/545592062614271', account: "Ssantai D'Ledang Homestay" }
   ]
