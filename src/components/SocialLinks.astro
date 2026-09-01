@@ -6,18 +6,19 @@ interface Props {
   compact?: boolean;
 }
 
-const { slug, compact = false } = Astro.props;
+const { slug, compact = true } = Astro.props;
 const links = getHomestaySocialLinks(slug);
 const platformNames: Record<SocialPlatform, string> = {
   facebook: 'Facebook',
   instagram: 'Instagram',
   tiktok: 'TikTok',
-  threads: 'Threads'
+  threads: 'Threads',
+  airbnb: 'Airbnb'
 };
 ---
 
 {links.length > 0 && (
-  <div class:list={['homestay-socials', compact && 'homestay-socials-compact']} aria-label="Official social pages">
+  <div class:list={['homestay-socials', compact && 'homestay-socials-compact']} aria-label="Official pages">
     {links.map((link) => (
       <a
         class:list={['homestay-social-link', `social-${link.platform}`]}
@@ -38,6 +39,9 @@ const platformNames: Record<SocialPlatform, string> = {
         )}
         {link.platform === 'threads' && (
           <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M17.8 9.3c-.7-3-2.7-4.6-5.7-4.6-3.8 0-6.2 2.8-6.2 7.2 0 4.5 2.4 7.4 6.2 7.4 3.3 0 5.7-1.9 5.7-4.7 0-2.4-1.7-3.9-4.5-3.9-2.4 0-4 1.2-4 3 0 1.5 1.2 2.6 2.9 2.6 2.8 0 4.8-2.1 4.8-5.1 0-1-.2-1.8-.5-2.6"/></svg>
+        )}
+        {link.platform === 'airbnb' && (
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M12 4.2c-1.7 0-2.7 2.2-3.5 4.1l-2.8 6.4c-.7 1.7-.1 3.4 1.4 4.1 1.7.8 3.4-.2 4.9-2.1 1.5 1.9 3.2 2.9 4.9 2.1 1.5-.7 2.1-2.4 1.4-4.1l-2.8-6.4C14.7 6.4 13.7 4.2 12 4.2Z"/><path fill="none" stroke="currentColor" stroke-width="1.8" d="M9.3 13.5c0-1.5 1.2-2.7 2.7-2.7s2.7 1.2 2.7 2.7c0 1.2-1 2.5-2.7 4.5-1.7-2-2.7-3.3-2.7-4.5Z"/></svg>
         )}
         {!compact && <span>{platformNames[link.platform]}</span>}
       </a>
