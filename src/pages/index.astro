@@ -92,11 +92,23 @@ const states = [...new Set(rankedHomestays.map((stay) => stay.state))].sort();
 
         <div id="listingFeed" class="hlist-list">
           {rankedHomestays.map((stay, index) => (
-            <a class="hlist-card lean-card" href={`/homestay/${stay.slug}`}
+            <a class="hlist-card lean-card has-photo" href={`/homestay/${stay.slug}`}
               data-name={stay.name.toLowerCase()} data-display-name={stay.name}
               data-city={stay.city.toLowerCase()} data-state={stay.state}
               data-score={stay.score || 0} data-evidence={stay.evidenceCount}>
               <div class="hlist-score"><strong>{stay.score ?? '—'}</strong><small>SCORE</small></div>
+              <div class="listing-thumb">
+                <img
+                  src={`/img/${stay.slug}?size=card`}
+                  alt=""
+                  width="104"
+                  height="78"
+                  loading="lazy"
+                  decoding="async"
+                  fetchpriority="low"
+                  onerror="this.parentElement.remove();this.closest('.hlist-card')?.classList.remove('has-photo')"
+                />
+              </div>
               <div class="hlist-card-copy">
                 <div class="hlist-card-top">
                   <span class="hlist-location">{stay.city} · {stay.state}</span>
@@ -106,7 +118,7 @@ const states = [...new Set(rankedHomestays.map((stay) => stay.state))].sort();
                 <div class="lean-meta">
                   {stay.evidenceCount > 0 && <strong>{stay.evidenceCount.toLocaleString()} reviews</strong>}
                   {stay.evidenceCount === 0 && stay.textCount > 0 && <strong>{stay.textCount} review{stay.textCount === 1 ? '' : 's'}</strong>}
-                  {stay.textSource && <span class="raw-source">VERBATIM · {stay.textSource}</span>}
+                  {stay.textSource && <span class="raw-source">{stay.textSource}</span>}
                 </div>
                 {stay.text && <p class="hlist-blurb lean-review">“{stay.text}”</p>}
               </div>
