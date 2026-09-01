@@ -90,12 +90,15 @@ const formatDate = (value?: string | null) => value ? new Intl.DateTimeFormat('e
         {rawReviews.map((review) => (
           <article class="lean-review-card raw-review-card">
             <div class="lean-review-head">
-              <span>{review.postedAt ? formatDate(review.postedAt) : 'Date not available'}</span>
-              <span class="raw-source">VERBATIM · {review.sourceLabel}</span>
+              <div>
+                {review.rating && <span class="stars raw-review-stars" aria-label={`${review.rating} out of 5`}>{'★'.repeat(review.rating)}{'☆'.repeat(5-review.rating)}</span>}
+                <span>{review.dateLabel || (review.postedAt ? formatDate(review.postedAt) : 'Date not available')}</span>
+              </div>
+              <a class="raw-source" href={review.sourceUrl} target="_blank" rel="nofollow noopener">VERBATIM · {review.sourceLabel}</a>
             </div>
-            <p>“{review.text}”</p>
+            <p class="raw-review-text">“{review.text}”</p>
             <div class="lean-review-author">
-              <a href={review.sourceUrl} target="_blank" rel="nofollow noopener"><strong>{review.author}</strong></a>
+              <a href={review.authorUrl || review.sourceUrl} target="_blank" rel="nofollow noopener"><strong>{review.author}</strong></a>
             </div>
           </article>
         ))}
