@@ -1,0 +1,46 @@
+---
+import { getHomestaySocialLinks, type SocialPlatform } from '../data/socialLinks';
+
+interface Props {
+  slug: string;
+  compact?: boolean;
+}
+
+const { slug, compact = false } = Astro.props;
+const links = getHomestaySocialLinks(slug);
+const platformNames: Record<SocialPlatform, string> = {
+  facebook: 'Facebook',
+  instagram: 'Instagram',
+  tiktok: 'TikTok',
+  threads: 'Threads'
+};
+---
+
+{links.length > 0 && (
+  <div class:list={['homestay-socials', compact && 'homestay-socials-compact']} aria-label="Official social pages">
+    {links.map((link) => (
+      <a
+        class:list={['homestay-social-link', `social-${link.platform}`]}
+        href={link.url}
+        target="_blank"
+        rel="noopener noreferrer nofollow"
+        title={`${link.account || 'Homestay'} on ${platformNames[link.platform]}`}
+        aria-label={`${link.account || 'Homestay'} on ${platformNames[link.platform]}`}
+      >
+        {link.platform === 'facebook' && (
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M13.7 21v-8h2.7l.4-3.1h-3.1v-2c0-.9.3-1.5 1.6-1.5H17V3.6c-.3 0-1.3-.1-2.5-.1-2.5 0-4.2 1.5-4.2 4.3v2.1H7.5V13h2.8v8h3.4Z"/></svg>
+        )}
+        {link.platform === 'instagram' && (
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.2" y="3.2" width="17.6" height="17.6" rx="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4.1" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="17.4" cy="6.8" r="1.2" fill="currentColor"/></svg>
+        )}
+        {link.platform === 'tiktok' && (
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M14.4 3h3c.2 1.7 1.2 3.1 2.9 3.8v3a8 8 0 0 1-2.9-1.1v6.1a6 6 0 1 1-5.2-5.9v3a3 3 0 1 0 2.2 2.9V3Z"/></svg>
+        )}
+        {link.platform === 'threads' && (
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M17.8 9.3c-.7-3-2.7-4.6-5.7-4.6-3.8 0-6.2 2.8-6.2 7.2 0 4.5 2.4 7.4 6.2 7.4 3.3 0 5.7-1.9 5.7-4.7 0-2.4-1.7-3.9-4.5-3.9-2.4 0-4 1.2-4 3 0 1.5 1.2 2.6 2.9 2.6 2.8 0 4.8-2.1 4.8-5.1 0-1-.2-1.8-.5-2.6"/></svg>
+        )}
+        {!compact && <span>{platformNames[link.platform]}</span>}
+      </a>
+    ))}
+  </div>
+)}
