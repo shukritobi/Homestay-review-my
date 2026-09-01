@@ -7,6 +7,7 @@ import { calculateHomestayScore } from '../../lib/score';
 import { getAdditionalScoreSources } from '../../data/externalRatings';
 import { getCommunityListing } from '../../data/communityListings';
 import { getRawPublicReviews } from '../../data/rawPublicReviews';
+import { TIMBER_RAW_REVIEWS_MORE } from '../../data/rawPublicReviewsTimberMore';
 
 const db = env.DB;
 const slug = Astro.params.slug || '';
@@ -24,7 +25,10 @@ if (!exists) Astro.response.status = 404;
 const name = stay?.name || community?.name || '';
 const city = stay?.city || community?.city || '';
 const state = stay?.state || community?.state || '';
-const rawReviews = exists ? getRawPublicReviews(slug) : [];
+const rawReviews = exists ? [
+  ...getRawPublicReviews(slug),
+  ...(slug === 'google-top-004' ? TIMBER_RAW_REVIEWS_MORE : [])
+] : [];
 const hScore = stay ? calculateHomestayScore({
   homestayReviewRating: stay.averageRating,
   homestayReviewCount: stay.reviewCount,
